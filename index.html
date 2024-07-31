@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8" />
+        <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>Chat</title>
+        <meta
+            name="description"
+            content="A simple interface for Ollama-served models."
+        />
+        <link rel="stylesheet" href="styles.css" />
+        <script src="script.js" defer></script>
+        <!-- <link rel="manifest" href="/manifest.json" /> -->
+    </head>
+    <body>
+        <div id="chat-container"></div>
+        <div id="input-container">
+            <form id="prompt-form">
+                <input
+                    type="text"
+                    id="prompt-input"
+                    placeholder="Enter your message here"
+                />
+                <button type="submit">Send</button>
+            </form>
+        </div>
+    </body>
+</html>
