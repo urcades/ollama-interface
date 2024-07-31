@@ -112,9 +112,6 @@ function formatMessage(content) {
     return `<code>${escapeHtml(code)}</code>`;
   });
 
-  // Replace newlines with <br> tags
-  // content = content.replace(/\n/g, "<br>");
-
   return content;
 }
 
