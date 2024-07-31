@@ -1,10 +1,14 @@
+/* Reset, defaults, etc. */
+
 * {
-    --fallback-bg-color: #ffffff; /* Default light background color */
-    --fallback-txt-color: #1a1818; /* Default light text color */
+    --bgColor: #ffffff; /* Default light background color */
+    --txtColor: #1a1818; /* Default light text color */
     margin: 0;
     padding: 0;
     box-sizing: border-box;
 }
+
+/* Chat container styling */
 
 html,
 body {
@@ -13,37 +17,49 @@ body {
 }
 
 body {
-    -webkit-font-smoothing: antialiased;
-    font-size: 1.23em;
-    background-color: var(--bgColor, var(--fallback-bg-color));
-    color: var(--txtColor, var(--fallback-txt-color));
-    font-family: "Times New Roman", Times, serif;
     display: flex;
     flex-direction: column;
+    background-color: var(--bgColor);
+    color: var(--txtColor);
+    font-family: serif;
+    -webkit-font-smoothing: antialiased;
+    font-size: 1.23em;
 }
+
 #chat-container {
     flex-grow: 1;
     overflow-y: auto;
     padding: 1em 1em 0 1em;
 }
+
+/* Chat message styling */
+
 .message {
     padding: 0.5em 0;
 }
+
 .message:last-child {
     padding-bottom: 0;
 }
+
 .user-message {
     text-align: right;
 }
+
 .assistant-message {
     text-align: left;
 }
+
+/* Chat input styling */
+
 #input-container {
     padding: 1em;
 }
+
 form {
     display: flex;
 }
+
 #prompt-input {
     flex-grow: 1;
     margin-right: 0.44em;
@@ -52,21 +68,23 @@ form {
     outline: none;
     font-family: "Times New Roman", Times, serif;
     font-size: 1em;
-    color: var(--txtColor, var(--fallback-txt-color));
+    color: var(--txtColor);
     background-color: #ededed;
     border-radius: 1.11em;
 }
+
 button {
     padding: 0.5em 1.11em;
     border: none;
     outline: none;
     font-size: 1em;
-    font-family: "Times New Roman", Times, serif;
+    font-family: serif;
     background-color: #ededed;
     border-radius: 1.11em;
 }
 
-/* New styles for code formatting */
+/* Code + preformatted text styles */
+
 pre {
     background-color: #ededed;
     border-radius: 1.11em;
@@ -90,22 +108,24 @@ pre code {
     border-radius: 3px;
 }
 
+/* Dark mode styles */
+
 @media (prefers-color-scheme: dark) {
     * {
-        --fallback-bg-color-dark: #1a1818; /* Default dark background color */
-        --fallback-txt-color-dark: #ffffff; /* Default dark text color */
+        --bgColorDark: #1a1818; /* Default dark background color */
+        --txtColorDark: #ffffff; /* Default dark text color */
     }
 
     body {
-        background-color: var(--bgColorDark, var(--fallback-bg-color-dark));
-        color: var(--txtColorDark, var(--fallback-txt-color-dark));
+        background-color: var(--bgColorDark);
+        color: var(--txtColorDark);
     }
     button {
-        color: var(--txtColorDark, var(--fallback-txt-color-dark));
+        color: var(--txtColorDark);
         background-color: #333;
     }
     #prompt-input {
-        color: var(--txtColorDark, var(--fallback-txt-color-dark));
+        color: var(--txtColorDark);
         background-color: #333;
     }
 
