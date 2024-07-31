@@ -2,6 +2,7 @@
 
 * {
     --bgColor: #ffffff; /* Default light background color */
+    --washColor: #ededed;
     --txtColor: #1a1818; /* Default light text color */
     margin: 0;
     padding: 0;
@@ -66,10 +67,10 @@ form {
     padding: 0.88em 1.11em;
     border: none;
     outline: none;
-    font-family: "Times New Roman", Times, serif;
+    font-family: serif;
     font-size: 1em;
     color: var(--txtColor);
-    background-color: #ededed;
+    background-color: var(--washColor);
     border-radius: 1.11em;
 }
 
@@ -79,14 +80,14 @@ button {
     outline: none;
     font-size: 1em;
     font-family: serif;
-    background-color: #ededed;
+    background-color: var(--washColor);
     border-radius: 1.11em;
 }
 
 /* Code + preformatted text styles */
 
 pre {
-    background-color: #ededed;
+    background-color: var(--washColor);
     border-radius: 1.11em;
     padding: 1em;
     margin: 0.5em 0;
@@ -103,7 +104,7 @@ pre code {
 }
 
 :not(pre) > code {
-    background-color: #f4f4f4;
+    background-color: var(--washColor);
     padding: 0.2em 0.4em;
     border-radius: 3px;
 }
@@ -113,6 +114,7 @@ pre code {
 @media (prefers-color-scheme: dark) {
     * {
         --bgColorDark: #1a1818; /* Default dark background color */
+        --washColorDark: #2d2d2d;
         --txtColorDark: #ffffff; /* Default dark text color */
     }
 
@@ -122,24 +124,24 @@ pre code {
     }
     button {
         color: var(--txtColorDark);
-        background-color: #333;
+        background-color: var(--washColorDark);
     }
     #prompt-input {
         color: var(--txtColorDark);
-        background-color: #333;
+        background-color: var(--washColorDark);
     }
 
     /* Dark mode styles for code formatting */
     pre {
-        background-color: #2d2d2d;
+        background-color: var(--washColorDark);
         border-color: #444;
     }
 
     code {
-        color: #e6e6e6;
+        color: var(--txtColorDark);
     }
 
     :not(pre) > code {
-        background-color: #2d2d2d;
+        background-color: var(--washColorDark);
     }
 }
