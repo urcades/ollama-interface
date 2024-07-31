@@ -1,5 +1,7 @@
 Ollama Interface
 
+![A screenshot preview of the interface](screenshot.png)
+
 ~
 
 Q: What is this?
