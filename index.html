@@ -73,6 +73,10 @@
 
             #input-container {
                 padding: 1em;
+                position: relative;
+                background-color: rgba(230, 39, 39, 0.08);  /* Semi-transparent background */
+                backdrop-filter: blur(33px);
+                -webkit-backdrop-filter: blur(33px);  /* For Safari support */
             }
 
             form {
@@ -205,10 +209,6 @@
                 .think {
                     color: #999999;  /* Lighter gray for dark mode */
                 }
-            }
-            
-            #input-container {
-                position: relative;  /* Add this to contain absolute positioning */
             }
         </style>
     </head>
