@@ -201,7 +201,6 @@
                 position: relative;  /* Add this to contain absolute positioning */
             }
         </style>
-        <!-- <link rel="manifest" href="/manifest.json" /> -->
     </head>
     <body>
         <div id="chat-container"></div>
@@ -212,10 +211,12 @@
                     id="prompt-input"
                     placeholder="Send a message to deepseek-r1:8b"
                 />
-                <!-- model selector for viewing downloaded ollama-->
+                <!-- working model selector for viewing downloaded ollama-->
                 <select id="model-selector" class="button-like">
                     <option value="">Loading models...</option>
                 </select>
+                <!-- Placeholder for properly-styledmodel selector -->
+                <button type="submit">Select Model</button>
                 <button type="submit">Send</button>
             </form>
         </div>
