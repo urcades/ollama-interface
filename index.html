@@ -77,11 +77,13 @@
 
             form {
                 display: flex;
+                gap: 0.44em 0.44em;
+                max-width: 100%;
             }
 
             #prompt-input {
-                flex-grow: 1;
-                margin-right: 0.44em;
+                flex: 1;
+                margin-right: 0;
                 padding: 0.88em 1.11em;
                 border: none;
                 outline: none;
@@ -93,6 +95,7 @@
             }
 
             select {
+                margin-right: 0;
                 padding: 0.5em 1.11em;
                 border: none;
                 outline: none;
@@ -100,7 +103,10 @@
                 font-family: serif;
                 background-color: var(--washColor);
                 border-radius: 1.11em;
-            }
+                -webkit-appearance: none;
+                -moz-appearance: none;
+                appearance: none;
+            }   
 
             button {
                 padding: 0.5em 1.11em;
@@ -110,6 +116,29 @@
                 font-family: serif;
                 background-color: var(--washColor);
                 border-radius: 1.11em;
+            }
+
+            /* Mobile layout */
+            @media (max-width: 600px) {
+                form {
+                    flex-wrap: wrap;
+                }
+
+                #prompt-input {
+                    min-width: 100%;
+                    flex: 1 1 100%;
+                }
+
+                select {
+                    flex: 1;
+                    min-width: 0;
+                    padding: 0.9em 1.11em;
+                }
+
+                button {
+                    flex: 0 0 auto;
+                    padding: 0.9em 1.11em;
+                }
             }
 
             /* Code + preformatted text styles */
@@ -150,7 +179,7 @@
                     background-color: var(--bgColorDark);
                     color: var(--txtColorDark);
                 }
-                button {
+                button, select {
                     color: var(--txtColorDark);
                     background-color: var(--washColorDark);
                 }
@@ -177,25 +206,6 @@
                     color: #999999;  /* Lighter gray for dark mode */
                 }
             }
-
-            #model-selector {
-                position: absolute;
-                right: 5em;  /* Adjust based on your Send button width */
-                top: 50%;
-                transform: translateY(-50%);
-                background: transparent;
-                border: none;
-                font-family: inherit;
-                font-size: 0.9em;
-                color: inherit;
-                opacity: 0.7;
-                cursor: pointer;
-                padding: 0.2em;
-            }
-            
-            #model-selector:hover {
-                opacity: 1;
-            }
             
             #input-container {
                 position: relative;  /* Add this to contain absolute positioning */
@@ -206,17 +216,19 @@
         <div id="chat-container"></div>
         <div id="input-container">
             <form id="prompt-form">
+                <!-- Chat input -->
                 <input
                     type="text"
                     id="prompt-input"
                     placeholder="Send a message to deepseek-r1:8b"
                 />
-                <!-- working model selector for viewing downloaded ollama-->
+                
+                <!-- Working model selector for viewing downloaded ollama models-->
                 <select id="model-selector" class="button-like">
                     <option value="">Loading models...</option>
                 </select>
-                <!-- Placeholder for properly-styledmodel selector -->
-                <button type="submit">Select Model</button>
+                
+                <!-- Chat Send button -->
                 <button type="submit">Send</button>
             </form>
         </div>
