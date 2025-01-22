@@ -51,6 +51,12 @@
                 padding: 0.5em 0;
             }
 
+            .think {
+                font-style: italic;
+                color: #bababa;
+                margin: 1em 0;
+            }
+
             .message:last-child {
                 padding-bottom: 0;
             }
@@ -82,6 +88,16 @@
                 font-family: serif;
                 font-size: 1em;
                 color: var(--txtColor);
+                background-color: var(--washColor);
+                border-radius: 1.11em;
+            }
+
+            select {
+                padding: 0.5em 1.11em;
+                border: none;
+                outline: none;
+                font-size: 1em;
+                font-family: serif;
                 background-color: var(--washColor);
                 border-radius: 1.11em;
             }
@@ -156,6 +172,33 @@
                 :not(pre) > code {
                     background-color: var(--washColorDark);
                 }
+
+                .think {
+                    color: #999999;  /* Lighter gray for dark mode */
+                }
+            }
+
+            #model-selector {
+                position: absolute;
+                right: 5em;  /* Adjust based on your Send button width */
+                top: 50%;
+                transform: translateY(-50%);
+                background: transparent;
+                border: none;
+                font-family: inherit;
+                font-size: 0.9em;
+                color: inherit;
+                opacity: 0.7;
+                cursor: pointer;
+                padding: 0.2em;
+            }
+            
+            #model-selector:hover {
+                opacity: 1;
+            }
+            
+            #input-container {
+                position: relative;  /* Add this to contain absolute positioning */
             }
         </style>
         <!-- <link rel="manifest" href="/manifest.json" /> -->
@@ -167,14 +210,18 @@
                 <input
                     type="text"
                     id="prompt-input"
-                    placeholder="Enter your message here"
+                    placeholder="Send a message to deepseek-r1:8b"
                 />
+                <!-- model selector for viewing downloaded ollama-->
+                <select id="model-selector" class="button-like">
+                    <option value="">Loading models...</option>
+                </select>
                 <button type="submit">Send</button>
             </form>
         </div>
     </body>
     <script>
-        const MODEL = "llama3.2:1b";
+        let currentModel = "deepseek-r1:8b";
         const SYSTEM_PROMPT = `
         Your name is Oh.
         You will respond in a moderately friendly and straightforward manner.
@@ -198,6 +245,47 @@
         // Focus the input field when the page loads
         window.addEventListener("load", () => {
             promptInput.focus();
+            fetchAvailableModels();
+        });
+
+        // Function to fetch available models from Ollama
+        async function fetchAvailableModels() {
+            try {
+                const response = await fetch("http://localhost:11434/api/tags");
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                const data = await response.json();
+                const modelSelector = document.getElementById("model-selector");
+                modelSelector.innerHTML = data.models
+                    .map(model => `<option value="${model.name}">${model.name}</option>`)
+                    .join("");
+                
+                // Set the initial model if it exists in the list
+                if (data.models.some(model => model.name === currentModel)) {
+                    modelSelector.value = currentModel;
+                } else if (data.models.length > 0) {
+                    currentModel = data.models[0].name;
+                    modelSelector.value = currentModel;
+                }
+                
+                updatePlaceholder();
+            } catch (error) {
+                console.error("Error fetching models:", error);
+                document.getElementById("model-selector").innerHTML = 
+                    '<option value="deepseek-r1:8b">deepseek-r1:8b</option>';
+            }
+        }
+
+        // Function to update input placeholder
+        function updatePlaceholder() {
+            promptInput.placeholder = `Send a message to ${currentModel}`;
+        }
+
+        // Add event listener for model selection
+        document.getElementById("model-selector").addEventListener("change", (e) => {
+            currentModel = e.target.value;
+            updatePlaceholder();
         });
 
         // Handle form submission
@@ -223,7 +311,7 @@
                             "Content-Type": "application/json",
                         },
                         body: JSON.stringify({
-                            model: MODEL,
+                            model: currentModel,
                             messages: conversationHistory,
                         }),
                     },
@@ -285,12 +373,18 @@
         }
 
         function formatMessage(content) {
+            // Handle <think> tags first
+            content = content.replace(
+                /<think>([\s\S]*?)<\/think>/g,
+                '<p class="think">$1</p>'
+            );
+
             // Replace triple backticks with <pre><code> blocks
             content = content.replace(
                 /```(\w*)\n([\s\S]*?)```/g,
                 (match, language, code) => {
                     return `<pre><code class="language-${language}">${escapeHtml(code.trim())}</code></pre>`;
-                },
+                }
             );
 
             // Replace single backticks with <code> inline
