@@ -1,6 +1,6 @@
 Ollama Interface
 
-![A screenshot preview of the interface](Screenshot 2025-01-26 at 15.04.16.png)
+![A screenshot preview of the interface](screenshot.png)
 
 ~
 
