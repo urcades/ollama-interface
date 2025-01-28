@@ -631,9 +631,15 @@
         }
 
         function formatMessage(content) {
-            // Handle <think> tags first
+            // Handle complete think tags
             content = content.replace(
                 /<think>([\s\S]*?)<\/think>/g,
+                '<div class="think">$1</div>'
+            );
+
+            // Handle incomplete think tags (opened but not closed)
+            content = content.replace(
+                /<think>([\s\S]*)$/,
                 '<div class="think">$1</div>'
             );
 
