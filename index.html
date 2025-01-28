@@ -62,6 +62,44 @@
                 font-style: italic;
                 color: #bababa;
                 margin: 1em 0;
+                position: relative;
+                padding-left: 1.5em;
+                overflow: hidden;
+                transition: max-height 0.3s ease-out;
+                max-height: none; /* Remove initial max-height */
+            }
+
+            .think.collapsed {
+                max-height: 1.5em;
+                cursor: pointer;
+            }
+
+            .think.collapsing {
+                transition: max-height 0.3s ease-out;
+            }
+
+            .think::before {
+                content: "▼";
+                position: absolute;
+                left: 0;
+                top: 0.2em;
+                font-size: 0.8em;
+                transition: transform 0.3s ease;
+                cursor: pointer;
+                line-height: 1;
+                display: inline-block;
+                width: 1em;
+                height: 1em;
+                text-align: center;
+            }
+
+            .think.collapsed::before {
+                transform: rotate(-90deg);
+            }
+
+            .think.collapsed::after {
+                content: "...";
+                color: #bababa;
             }
 
             .message:last-child {
@@ -484,7 +522,14 @@
 
                 while (true) {
                     const { done, value } = await reader.read();
-                    if (done) break;
+                    if (done) {
+                        // After response is complete, collapse think divs
+                        setTimeout(
+                            () => collapseThinkDivs(assistantMessageElement),
+                            100
+                        );
+                        break;
+                    }
                     const chunk = new TextDecoder().decode(value);
                     const lines = chunk.split("\n");
                     for (const line of lines) {
@@ -589,14 +634,16 @@
             // Handle <think> tags first
             content = content.replace(
                 /<think>([\s\S]*?)<\/think>/g,
-                '<p class="think">$1</p>'
+                '<div class="think">$1</div>'
             );
 
             // Replace triple backticks with <pre><code> blocks
             content = content.replace(
                 /```(\w*)\n([\s\S]*?)```/g,
                 (match, language, code) => {
-                    return `<pre><code class="language-${language}">${escapeHtml(code.trim())}</code></pre>`;
+                    return `<pre><code class="language-${language}">${escapeHtml(
+                        code.trim()
+                    )}</code></pre>`;
                 }
             );
 
@@ -606,6 +653,45 @@
             });
 
             return content;
+        }
+
+        // Function to handle think div transitions
+        function handleThinkTransition(thinkDiv, shouldCollapse) {
+            thinkDiv.classList.add("collapsing");
+
+            if (shouldCollapse) {
+                // Collapsing
+                thinkDiv.style.maxHeight = thinkDiv.scrollHeight + "px";
+                // Force reflow
+                thinkDiv.offsetHeight;
+                requestAnimationFrame(() => {
+                    thinkDiv.style.maxHeight = "1.5em";
+                    thinkDiv.classList.add("collapsed");
+                    setTimeout(() => {
+                        thinkDiv.classList.remove("collapsing");
+                    }, 300);
+                });
+            } else {
+                // Expanding
+                thinkDiv.classList.remove("collapsed");
+                const fullHeight = thinkDiv.scrollHeight;
+                requestAnimationFrame(() => {
+                    thinkDiv.style.maxHeight = fullHeight + "px";
+                    setTimeout(() => {
+                        thinkDiv.classList.remove("collapsing");
+                        thinkDiv.style.maxHeight = "none";
+                    }, 300);
+                });
+            }
+        }
+
+        // Function to collapse think divs
+        function collapseThinkDivs(container) {
+            container
+                .querySelectorAll(".think:not(.collapsed)")
+                .forEach((thinkDiv) => {
+                    handleThinkTransition(thinkDiv, true);
+                });
         }
 
         function escapeHtml(unsafe) {
@@ -695,5 +781,22 @@
         // Move model selector to settings menu
         const modelSelector = document.getElementById("model-selector");
         settingsMenu.insertBefore(modelSelector, systemPromptButton);
+
+        // Add click handler for think divs
+        document.addEventListener("click", (e) => {
+            if (
+                e.target.classList.contains("think") ||
+                e.target.closest(".think")
+            ) {
+                const thinkDiv = e.target.classList.contains("think")
+                    ? e.target
+                    : e.target.closest(".think");
+
+                handleThinkTransition(
+                    thinkDiv,
+                    !thinkDiv.classList.contains("collapsed")
+                );
+            }
+        });
     </script>
 </html>
