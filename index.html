@@ -212,7 +212,85 @@
                 }
 
                 .think {
-                    color: #999999;  /* Lighter gray for dark mode */
+                    color: #999999; /* Lighter gray for dark mode */
+                }
+            }
+
+            /* Settings menu styling */
+            #settings-button {
+                padding: 0.5em 1.11em;
+            }
+
+            #settings-menu {
+                position: absolute;
+                bottom: calc(100% + 0.5em);
+                right: 1em;
+                background-color: var(--bgColor);
+                border-radius: 1.11em;
+                padding: 1em;
+                box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+                display: none;
+                flex-direction: column;
+                gap: 0.5em;
+                min-width: 200px;
+            }
+
+            #settings-menu.show {
+                display: flex;
+            }
+
+            /* Modal styling */
+            .modal {
+                display: none;
+                position: fixed;
+                inset: 0;
+                background-color: rgba(0, 0, 0, 0.5);
+                z-index: 1000;
+            }
+
+            .modal.show {
+                display: flex;
+                align-items: center;
+                justify-content: center;
+            }
+
+            .modal-content {
+                background-color: var(--bgColor);
+                padding: 2em;
+                border-radius: 1.11em;
+                width: 90%;
+                max-width: 600px;
+            }
+
+            .modal textarea {
+                width: 100%;
+                height: 200px;
+                margin: 1em 0;
+                padding: 1em;
+                border: none;
+                border-radius: 1.11em;
+                background-color: var(--washColor);
+                color: var(--txtColor);
+                font-family: monospace;
+                font-size: 0.9em;
+                resize: vertical;
+            }
+
+            .modal-buttons {
+                display: flex;
+                justify-content: flex-end;
+                gap: 0.5em;
+            }
+
+            /* Dark mode additions */
+            @media (prefers-color-scheme: dark) {
+                #settings-menu {
+                    background-color: var(--bgColorDark);
+                    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
+                }
+
+                .modal-content {
+                    background-color: var(--bgColorDark);
                 }
             }
         </style>
@@ -227,15 +305,32 @@
                     id="prompt-input"
                     placeholder="Send a message to deepseek-r1:8b"
                 />
-                
-                <!-- Working model selector for viewing downloaded ollama models-->
+                <button type="submit">Send</button>
+                <button type="button" id="settings-button">⚙️</button>
+            </form>
+
+            <!-- Settings menu -->
+            <div id="settings-menu">
                 <select id="model-selector" class="button-like">
                     <option value="">Loading models...</option>
                 </select>
-                
-                <!-- Chat Send button -->
-                <button type="submit">Send</button>
-            </form>
+                <button type="button" id="system-prompt-button">
+                    System Prompt
+                </button>
+            </div>
+        </div>
+        <!-- System Prompt Modal -->
+        <div id="system-prompt-modal" class="modal">
+            <div class="modal-content">
+                <h2>Edit System Prompt</h2>
+                <textarea id="system-prompt-textarea"></textarea>
+                <div class="modal-buttons">
+                    <button type="button" id="cancel-system-prompt">
+                        Cancel
+                    </button>
+                    <button type="button" id="save-system-prompt">Save</button>
+                </div>
+            </div>
         </div>
     </body>
     <script>
@@ -432,5 +527,73 @@
                 handleSubmit(e);
             }
         });
+
+        // Settings menu functionality
+        const settingsButton = document.getElementById("settings-button");
+        const settingsMenu = document.getElementById("settings-menu");
+        const systemPromptButton = document.getElementById(
+            "system-prompt-button"
+        );
+        const systemPromptModal = document.getElementById(
+            "system-prompt-modal"
+        );
+        const systemPromptTextarea = document.getElementById(
+            "system-prompt-textarea"
+        );
+        const cancelSystemPromptButton = document.getElementById(
+            "cancel-system-prompt"
+        );
+        const saveSystemPromptButton =
+            document.getElementById("save-system-prompt");
+
+        // Toggle settings menu
+        settingsButton.addEventListener("click", (e) => {
+            e.stopPropagation();
+            settingsMenu.classList.toggle("show");
+        });
+
+        // Close settings menu when clicking outside
+        document.addEventListener("click", (e) => {
+            if (
+                !settingsMenu.contains(e.target) &&
+                e.target !== settingsButton
+            ) {
+                settingsMenu.classList.remove("show");
+            }
+        });
+
+        // System prompt modal functionality
+        systemPromptButton.addEventListener("click", () => {
+            systemPromptTextarea.value = SYSTEM_PROMPT.trim();
+            systemPromptModal.classList.add("show");
+            settingsMenu.classList.remove("show");
+        });
+
+        cancelSystemPromptButton.addEventListener("click", () => {
+            systemPromptModal.classList.remove("show");
+        });
+
+        saveSystemPromptButton.addEventListener("click", () => {
+            SYSTEM_PROMPT = systemPromptTextarea.value;
+            // Reset conversation history with new system prompt
+            conversationHistory = [
+                {
+                    role: "system",
+                    content: SYSTEM_PROMPT,
+                },
+            ];
+            systemPromptModal.classList.remove("show");
+        });
+
+        // Close modal when clicking outside
+        systemPromptModal.addEventListener("click", (e) => {
+            if (e.target === systemPromptModal) {
+                systemPromptModal.classList.remove("show");
+            }
+        });
+
+        // Move model selector to settings menu
+        const modelSelector = document.getElementById("model-selector");
+        settingsMenu.insertBefore(modelSelector, systemPromptButton);
     </script>
 </html>
