@@ -49,6 +49,13 @@
 
             .message {
                 padding: 0.5em 0;
+                position: relative;
+            }
+
+            .message-content {
+                position: relative;
+                display: inline-block;
+                max-width: 100%;
             }
 
             .think {
@@ -62,11 +69,41 @@
             }
 
             .user-message {
+                padding-left: 20%;
                 text-align: right;
             }
 
             .assistant-message {
+                padding-right: 20%;
                 text-align: left;
+            }
+
+            /* Copy button styling */
+            .copy-buttons {
+                position: absolute;
+                right: 0;
+                top: 0;
+                display: none;
+                gap: 0.3em;
+                background-color: var(--bgColor);
+                padding: 0.3em;
+                border-radius: 0.5em;
+                box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+            }
+
+            .assistant-message:hover .copy-buttons {
+                display: flex;
+                flex-direction: column;
+            }
+
+            .copy-button {
+                padding: 0.3em 0.6em;
+                font-size: 0.8em;
+                opacity: 0.7;
+            }
+
+            .copy-button:hover {
+                opacity: 1;
             }
 
             /* Chat input styling */
@@ -123,31 +160,9 @@
                 cursor: pointer;
             }
 
-            button:hover, select:hover {
+            button:hover,
+            select:hover {
                 opacity: 0.8;
-            }
-
-            /* Mobile layout */
-            @media (max-width: 600px) {
-                form {
-                    flex-wrap: wrap;
-                }
-
-                #prompt-input {
-                    min-width: 100%;
-                    flex: 1 1 100%;
-                }
-
-                select {
-                    flex: 1;
-                    min-width: 0;
-                    padding: 0.9em 1.11em;
-                }
-
-                button {
-                    flex: 0 0 auto;
-                    padding: 0.9em 1.11em;
-                }
             }
 
             /* Code + preformatted text styles */
@@ -173,47 +188,6 @@
                 background-color: var(--washColor);
                 padding: 0.2em 0.4em;
                 border-radius: 3px;
-            }
-
-            /* Dark mode styles */
-
-            @media (prefers-color-scheme: dark) {
-                * {
-                    --bgColorDark: #1a1818; /* Default dark background color */
-                    --washColorDark: #2d2d2d;
-                    --txtColorDark: #ffffff; /* Default dark text color */
-                }
-
-                body {
-                    background-color: var(--bgColorDark);
-                    color: var(--txtColorDark);
-                }
-                button, select {
-                    color: var(--txtColorDark);
-                    background-color: var(--washColorDark);
-                }
-                #prompt-input {
-                    color: var(--txtColorDark);
-                    background-color: var(--washColorDark);
-                }
-
-                /* Dark mode styles for code formatting */
-                pre {
-                    background-color: var(--washColorDark);
-                    border-color: #444;
-                }
-
-                code {
-                    color: var(--txtColorDark);
-                }
-
-                :not(pre) > code {
-                    background-color: var(--washColorDark);
-                }
-
-                .think {
-                    color: #999999; /* Lighter gray for dark mode */
-                }
             }
 
             /* Settings menu styling */
@@ -282,8 +256,75 @@
                 gap: 0.5em;
             }
 
-            /* Dark mode additions */
+            /* Mobile layout */
+            @media (max-width: 600px) {
+                form {
+                    flex-wrap: wrap;
+                }
+
+                #prompt-input {
+                    min-width: 100%;
+                    flex: 1 1 100%;
+                }
+
+                select {
+                    flex: 1;
+                    min-width: 0;
+                    padding: 0.9em 1.11em;
+                }
+
+                button {
+                    flex: 0 0 auto;
+                    padding: 0.9em 1.11em;
+                }
+            }
+
+            /* Dark mode styles */
+
             @media (prefers-color-scheme: dark) {
+                * {
+                    --bgColorDark: #1a1818; /* Default dark background color */
+                    --washColorDark: #2d2d2d;
+                    --txtColorDark: #ffffff; /* Default dark text color */
+                }
+
+                body {
+                    background-color: var(--bgColorDark);
+                    color: var(--txtColorDark);
+                }
+                button,
+                select {
+                    color: var(--txtColorDark);
+                    background-color: var(--washColorDark);
+                }
+                #prompt-input,
+                #system-prompt-textarea {
+                    color: var(--txtColorDark);
+                    background-color: var(--washColorDark);
+                }
+
+                /* Dark mode styles for code formatting */
+                pre {
+                    background-color: var(--washColorDark);
+                    border-color: #444;
+                }
+
+                code {
+                    color: var(--txtColorDark);
+                }
+
+                :not(pre) > code {
+                    background-color: var(--washColorDark);
+                }
+
+                .think {
+                    color: #999999; /* Lighter gray for dark mode */
+                }
+
+                .copy-buttons {
+                    background-color: var(--bgColorDark);
+                }
+
                 #settings-menu {
                     background-color: var(--bgColorDark);
                     box-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
@@ -477,12 +518,71 @@
         }
 
         function addMessageToChat(role, content) {
-            const messageDiv = document.createElement("div");
-            messageDiv.classList.add("message", `${role}-message`);
-            messageDiv.innerHTML = formatMessage(content);
-            chatContainer.appendChild(messageDiv);
+            const div = document.createElement("div");
+            div.classList.add("message", `${role}-message`);
+
+            if (role === "assistant") {
+                const contentDiv = document.createElement("div");
+                contentDiv.classList.add("message-content");
+                contentDiv.innerHTML = formatMessage(content);
+
+                // Create container for copy buttons
+                const copyButtons = document.createElement("div");
+                copyButtons.classList.add("copy-buttons");
+
+                // Add copy button for main content
+                const mainCopyButton = document.createElement("button");
+                mainCopyButton.classList.add("copy-button");
+                mainCopyButton.textContent = "Copy response";
+                mainCopyButton.addEventListener("click", async () => {
+                    const textToCopy = Array.from(contentDiv.childNodes)
+                        .filter((node) => !node.classList?.contains("think"))
+                        .map((node) => node.textContent)
+                        .join("\n")
+                        .trim();
+                    await copyTextWithFeedback(textToCopy, mainCopyButton);
+                });
+
+                // Add copy button for think content
+                const thinkCopyButton = document.createElement("button");
+                thinkCopyButton.classList.add("copy-button");
+                thinkCopyButton.textContent = "Copy thought";
+                thinkCopyButton.addEventListener("click", async () => {
+                    const thinkContent = Array.from(
+                        contentDiv.querySelectorAll(".think")
+                    )
+                        .map((node) => node.textContent)
+                        .join("\n")
+                        .trim();
+                    await copyTextWithFeedback(thinkContent, thinkCopyButton);
+                });
+
+                copyButtons.appendChild(thinkCopyButton);
+                copyButtons.appendChild(mainCopyButton);
+                div.appendChild(copyButtons);
+                div.appendChild(contentDiv);
+            } else {
+                div.innerHTML = formatMessage(content);
+            }
+
+            chatContainer.appendChild(div);
             chatContainer.scrollTop = chatContainer.scrollHeight;
-            return messageDiv; // Return the created element
+            return div.querySelector(".message-content") || div;
+        }
+
+        // Helper function for copy functionality
+        async function copyTextWithFeedback(text, button) {
+            const originalText = button.textContent;
+            try {
+                await navigator.clipboard.writeText(text);
+                button.textContent = "Copied!";
+            } catch (err) {
+                console.error("Failed to copy:", err);
+                button.textContent = "Failed";
+            }
+            setTimeout(() => {
+                button.textContent = originalText;
+            }, 2000);
         }
 
         function formatMessage(content) {
