@@ -85,7 +85,7 @@
       }
 
       .think::before {
-        content: "▼";
+        content: '▼';
         position: absolute;
         left: 0;
         top: 0.2em;
@@ -104,7 +104,7 @@
       }
 
       .think.collapsed::after {
-        content: "...";
+        content: '...';
         color: #bababa;
       }
 
@@ -418,7 +418,7 @@
     </div>
   </body>
   <script>
-    let currentModel = "deepseek-r1:8b";
+    let currentModel = 'deepseek-r1:8b';
     const SYSTEM_PROMPT = `
         Your name is Oh.
         You will respond in a moderately friendly and straightforward manner.
@@ -429,18 +429,18 @@
         For inline code or short code snippets, use single backticks (\`).
         `;
 
-    const form = document.getElementById("prompt-form");
-    const promptInput = document.getElementById("prompt-input");
-    const chatContainer = document.getElementById("chat-container");
+    const form = document.getElementById('prompt-form');
+    const promptInput = document.getElementById('prompt-input');
+    const chatContainer = document.getElementById('chat-container');
     let conversationHistory = [
       {
-        role: "system",
+        role: 'system',
         content: SYSTEM_PROMPT,
       },
     ];
 
     // Focus the input field when the page loads
-    window.addEventListener("load", () => {
+    window.addEventListener('load', () => {
       promptInput.focus();
       fetchAvailableModels();
     });
@@ -448,20 +448,18 @@
     // Function to fetch available models from Ollama
     async function fetchAvailableModels() {
       try {
-        const response = await fetch("http://localhost:11434/api/tags");
+        const response = await fetch('http://localhost:11434/api/tags');
         if (!response.ok) {
           throw new Error(`HTTP error! status: ${response.status}`);
         }
         const data = await response.json();
-        const modelSelector = document.getElementById("model-selector");
+        const modelSelector = document.getElementById('model-selector');
         modelSelector.innerHTML = data.models
-          .map(
-            (model) => `<option value="${model.name}">${model.name}</option>`
-          )
-          .join("");
+          .map(model => `<option value="${model.name}">${model.name}</option>`)
+          .join('');
 
         // Set the initial model if it exists in the list
-        if (data.models.some((model) => model.name === currentModel)) {
+        if (data.models.some(model => model.name === currentModel)) {
           modelSelector.value = currentModel;
         } else if (data.models.length > 0) {
           currentModel = data.models[0].name;
@@ -470,8 +468,8 @@
 
         updatePlaceholder();
       } catch (error) {
-        console.error("Error fetching models:", error);
-        document.getElementById("model-selector").innerHTML =
+        console.error('Error fetching models:', error);
+        document.getElementById('model-selector').innerHTML =
           '<option value="deepseek-r1:8b">deepseek-r1:8b</option>';
       }
     }
@@ -482,12 +480,10 @@
     }
 
     // Add event listener for model selection
-    document
-      .getElementById("model-selector")
-      .addEventListener("change", (e) => {
-        currentModel = e.target.value;
-        updatePlaceholder();
-      });
+    document.getElementById('model-selector').addEventListener('change', e => {
+      currentModel = e.target.value;
+      updatePlaceholder();
+    });
 
     // Handle form submission
     async function handleSubmit(e) {
@@ -496,18 +492,18 @@
       if (!prompt) return; // Don't submit if the prompt is empty
 
       // Add user message to the chat container
-      addMessageToChat("user", prompt);
+      addMessageToChat('user', prompt);
 
       // Add user message to conversation history
-      conversationHistory.push({ role: "user", content: prompt });
+      conversationHistory.push({ role: 'user', content: prompt });
 
-      promptInput.value = ""; // Clear the input field
+      promptInput.value = ''; // Clear the input field
 
       try {
-        const response = await fetch("http://localhost:11434/api/chat", {
-          method: "POST",
+        const response = await fetch('http://localhost:11434/api/chat', {
+          method: 'POST',
           headers: {
-            "Content-Type": "application/json",
+            'Content-Type': 'application/json',
           },
           body: JSON.stringify({
             model: currentModel,
@@ -518,10 +514,10 @@
           throw new Error(`HTTP error! status: ${response.status}`);
         }
         const reader = response.body.getReader();
-        let assistantResponse = "";
+        let assistantResponse = '';
 
         // Create a new message element for the assistant's response
-        const assistantMessageElement = addMessageToChat("assistant", "");
+        const assistantMessageElement = addMessageToChat('assistant', '');
 
         while (true) {
           const { done, value } = await reader.read();
@@ -531,9 +527,9 @@
             break;
           }
           const chunk = new TextDecoder().decode(value);
-          const lines = chunk.split("\n");
+          const lines = chunk.split('\n');
           for (const line of lines) {
-            if (line.trim() !== "") {
+            if (line.trim() !== '') {
               const parsedLine = JSON.parse(line);
               if (parsedLine.message?.content) {
                 assistantResponse += parsedLine.message.content;
@@ -546,13 +542,13 @@
         }
         // Add assistant's complete response to conversation history
         conversationHistory.push({
-          role: "assistant",
+          role: 'assistant',
           content: assistantResponse,
         });
       } catch (error) {
-        console.error("Error:", error);
+        console.error('Error:', error);
         addMessageToChat(
-          "error",
+          'error',
           `An error occurred: ${error.message}<br>Make sure Ollama is running and accessible at http://localhost:11434`
         );
       } finally {
@@ -562,39 +558,39 @@
     }
 
     function addMessageToChat(role, content) {
-      const div = document.createElement("div");
-      div.classList.add("message", `${role}-message`);
+      const div = document.createElement('div');
+      div.classList.add('message', `${role}-message`);
 
-      if (role === "assistant") {
-        const contentDiv = document.createElement("div");
-        contentDiv.classList.add("message-content");
+      if (role === 'assistant') {
+        const contentDiv = document.createElement('div');
+        contentDiv.classList.add('message-content');
         contentDiv.innerHTML = formatMessage(content);
 
         // Create container for copy buttons
-        const copyButtons = document.createElement("div");
-        copyButtons.classList.add("copy-buttons");
+        const copyButtons = document.createElement('div');
+        copyButtons.classList.add('copy-buttons');
 
         // Add copy button for main content
-        const mainCopyButton = document.createElement("button");
-        mainCopyButton.classList.add("copy-button");
-        mainCopyButton.textContent = "Copy response";
-        mainCopyButton.addEventListener("click", async () => {
+        const mainCopyButton = document.createElement('button');
+        mainCopyButton.classList.add('copy-button');
+        mainCopyButton.textContent = 'Copy response';
+        mainCopyButton.addEventListener('click', async () => {
           const textToCopy = Array.from(contentDiv.childNodes)
-            .filter((node) => !node.classList?.contains("think"))
-            .map((node) => node.textContent)
-            .join("\n")
+            .filter(node => !node.classList?.contains('think'))
+            .map(node => node.textContent)
+            .join('\n')
             .trim();
           await copyTextWithFeedback(textToCopy, mainCopyButton);
         });
 
         // Add copy button for think content
-        const thinkCopyButton = document.createElement("button");
-        thinkCopyButton.classList.add("copy-button");
-        thinkCopyButton.textContent = "Copy thought";
-        thinkCopyButton.addEventListener("click", async () => {
-          const thinkContent = Array.from(contentDiv.querySelectorAll(".think"))
-            .map((node) => node.textContent)
-            .join("\n")
+        const thinkCopyButton = document.createElement('button');
+        thinkCopyButton.classList.add('copy-button');
+        thinkCopyButton.textContent = 'Copy thought';
+        thinkCopyButton.addEventListener('click', async () => {
+          const thinkContent = Array.from(contentDiv.querySelectorAll('.think'))
+            .map(node => node.textContent)
+            .join('\n')
             .trim();
           await copyTextWithFeedback(thinkContent, thinkCopyButton);
         });
@@ -609,7 +605,7 @@
 
       chatContainer.appendChild(div);
       chatContainer.scrollTop = chatContainer.scrollHeight;
-      return div.querySelector(".message-content") || div;
+      return div.querySelector('.message-content') || div;
     }
 
     // Helper function for copy functionality
@@ -617,10 +613,10 @@
       const originalText = button.textContent;
       try {
         await navigator.clipboard.writeText(text);
-        button.textContent = "Copied!";
+        button.textContent = 'Copied!';
       } catch (err) {
-        console.error("Failed to copy:", err);
-        button.textContent = "Failed";
+        console.error('Failed to copy:', err);
+        button.textContent = 'Failed';
       }
       setTimeout(() => {
         button.textContent = originalText;
@@ -660,29 +656,29 @@
 
     // Function to handle think div transitions
     function handleThinkTransition(thinkDiv, shouldCollapse) {
-      thinkDiv.classList.add("collapsing");
+      thinkDiv.classList.add('collapsing');
 
       if (shouldCollapse) {
         // Collapsing
-        thinkDiv.style.maxHeight = thinkDiv.scrollHeight + "px";
+        thinkDiv.style.maxHeight = thinkDiv.scrollHeight + 'px';
         // Force reflow
         thinkDiv.offsetHeight;
         requestAnimationFrame(() => {
-          thinkDiv.style.maxHeight = "1.5em";
-          thinkDiv.classList.add("collapsed");
+          thinkDiv.style.maxHeight = '1.5em';
+          thinkDiv.classList.add('collapsed');
           setTimeout(() => {
-            thinkDiv.classList.remove("collapsing");
+            thinkDiv.classList.remove('collapsing');
           }, 300);
         });
       } else {
         // Expanding
-        thinkDiv.classList.remove("collapsed");
+        thinkDiv.classList.remove('collapsed');
         const fullHeight = thinkDiv.scrollHeight;
         requestAnimationFrame(() => {
-          thinkDiv.style.maxHeight = fullHeight + "px";
+          thinkDiv.style.maxHeight = fullHeight + 'px';
           setTimeout(() => {
-            thinkDiv.classList.remove("collapsing");
-            thinkDiv.style.maxHeight = "none";
+            thinkDiv.classList.remove('collapsing');
+            thinkDiv.style.maxHeight = 'none';
           }, 300);
         });
       }
@@ -690,117 +686,115 @@
 
     // Function to collapse think divs
     function collapseThinkDivs(container) {
-      container
-        .querySelectorAll(".think:not(.collapsed)")
-        .forEach((thinkDiv) => {
-          handleThinkTransition(thinkDiv, true);
-        });
+      container.querySelectorAll('.think:not(.collapsed)').forEach(thinkDiv => {
+        handleThinkTransition(thinkDiv, true);
+      });
     }
 
     function escapeHtml(unsafe) {
       return unsafe
-        .replace(/&/g, "&amp;")
-        .replace(/</g, "&lt;")
-        .replace(/>/g, "&gt;")
-        .replace(/"/g, "&quot;")
-        .replace(/'/g, "&#039;");
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
     }
 
     // Handle form submission
-    form.addEventListener("submit", handleSubmit);
+    form.addEventListener('submit', handleSubmit);
 
     // Handle Enter key press
-    promptInput.addEventListener("keydown", (e) => {
-      if (e.key === "Enter" && !e.shiftKey) {
+    promptInput.addEventListener('keydown', e => {
+      if (e.key === 'Enter' && !e.shiftKey) {
         e.preventDefault(); // Prevent default to avoid newline
         handleSubmit(e);
       }
     });
 
     // Settings menu functionality
-    const settingsButton = document.getElementById("settings-button");
-    const settingsMenu = document.getElementById("settings-menu");
-    const systemPromptButton = document.getElementById("system-prompt-button");
-    const systemPromptModal = document.getElementById("system-prompt-modal");
+    const settingsButton = document.getElementById('settings-button');
+    const settingsMenu = document.getElementById('settings-menu');
+    const systemPromptButton = document.getElementById('system-prompt-button');
+    const systemPromptModal = document.getElementById('system-prompt-modal');
     const systemPromptTextarea = document.getElementById(
-      "system-prompt-textarea"
+      'system-prompt-textarea'
     );
     const cancelSystemPromptButton = document.getElementById(
-      "cancel-system-prompt"
+      'cancel-system-prompt'
     );
     const saveSystemPromptButton =
-      document.getElementById("save-system-prompt");
+      document.getElementById('save-system-prompt');
 
     // Toggle settings menu
-    settingsButton.addEventListener("click", (e) => {
+    settingsButton.addEventListener('click', e => {
       e.stopPropagation();
-      settingsMenu.classList.toggle("show");
+      settingsMenu.classList.toggle('show');
     });
 
     // Close settings menu when clicking outside
-    document.addEventListener("click", (e) => {
+    document.addEventListener('click', e => {
       if (!settingsMenu.contains(e.target) && e.target !== settingsButton) {
-        settingsMenu.classList.remove("show");
+        settingsMenu.classList.remove('show');
       }
     });
 
     // System prompt modal functionality
-    systemPromptButton.addEventListener("click", () => {
+    systemPromptButton.addEventListener('click', () => {
       systemPromptTextarea.value = SYSTEM_PROMPT.trim();
-      systemPromptModal.classList.add("show");
-      settingsMenu.classList.remove("show");
+      systemPromptModal.classList.add('show');
+      settingsMenu.classList.remove('show');
     });
 
-    cancelSystemPromptButton.addEventListener("click", () => {
-      systemPromptModal.classList.remove("show");
+    cancelSystemPromptButton.addEventListener('click', () => {
+      systemPromptModal.classList.remove('show');
     });
 
-    saveSystemPromptButton.addEventListener("click", () => {
+    saveSystemPromptButton.addEventListener('click', () => {
       SYSTEM_PROMPT = systemPromptTextarea.value;
       // Reset conversation history with new system prompt
       conversationHistory = [
         {
-          role: "system",
+          role: 'system',
           content: SYSTEM_PROMPT,
         },
       ];
-      systemPromptModal.classList.remove("show");
+      systemPromptModal.classList.remove('show');
     });
 
     // Close modal when clicking outside
-    systemPromptModal.addEventListener("click", (e) => {
+    systemPromptModal.addEventListener('click', e => {
       if (e.target === systemPromptModal) {
-        systemPromptModal.classList.remove("show");
+        systemPromptModal.classList.remove('show');
       }
     });
 
     // Move model selector to settings menu
-    const modelSelector = document.getElementById("model-selector");
+    const modelSelector = document.getElementById('model-selector');
     settingsMenu.insertBefore(modelSelector, systemPromptButton);
 
     // Add click handler for think divs
-    document.addEventListener("click", (e) => {
-      if (e.target.classList.contains("think") || e.target.closest(".think")) {
-        const thinkDiv = e.target.classList.contains("think")
+    document.addEventListener('click', e => {
+      if (e.target.classList.contains('think') || e.target.closest('.think')) {
+        const thinkDiv = e.target.classList.contains('think')
           ? e.target
-          : e.target.closest(".think");
+          : e.target.closest('.think');
 
         handleThinkTransition(
           thinkDiv,
-          !thinkDiv.classList.contains("collapsed")
+          !thinkDiv.classList.contains('collapsed')
         );
       }
     });
 
-    if ("serviceWorker" in navigator) {
-      window.addEventListener("load", () => {
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
         navigator.serviceWorker
-          .register("/sw.js")
-          .then((registration) => {
-            console.log("ServiceWorker registration successful");
+          .register('/sw.js')
+          .then(registration => {
+            console.log('ServiceWorker registration successful');
           })
-          .catch((err) => {
-            console.log("ServiceWorker registration failed: ", err);
+          .catch(err => {
+            console.log('ServiceWorker registration failed: ', err);
           });
       });
     }
