@@ -27,6 +27,16 @@
         box-sizing: border-box;
       }
 
+      /* Font settings */
+      @font-face {
+        font-family: 'JetBrains Mono';
+        src: url('https://cdn.jsdelivr.net/gh/JetBrains/JetBrainsMono/web/woff2/JetBrainsMono-Regular.woff2')
+          format('woff2');
+        font-weight: normal;
+        font-style: normal;
+        font-display: swap;
+      }
+
       /* Chat container styling */
 
       html,
@@ -40,15 +50,15 @@
         flex-direction: column;
         background-color: var(--bgColor);
         color: var(--txtColor);
-        font-family: serif;
+        font-family: 'JetBrains Mono', monospace;
         /* -webkit-font-smoothing: antialiased; */
-        font-size: 1.23em;
+        font-size: 1em;
       }
 
       #chat-container {
         flex-grow: 1;
         overflow-y: auto;
-        padding: 1em 1em 0 1em;
+        padding: 1em 4em;
       }
 
       /* Chat message styling */
@@ -190,7 +200,7 @@
         padding: 0.88em 1.11em;
         border: none;
         outline: none;
-        font-family: serif;
+        font-family: 'JetBrains Mono', monospace;
         font-size: 1em;
         color: var(--txtColor);
         background-color: var(--washColor);
@@ -203,7 +213,7 @@
         border: none;
         outline: none;
         font-size: 1em;
-        font-family: serif;
+        font-family: 'JetBrains Mono', monospace;
         background-color: var(--washColor);
         border-radius: 1.11em;
         -webkit-appearance: none;
@@ -217,7 +227,7 @@
         border: none;
         outline: none;
         font-size: 1em;
-        font-family: serif;
+        font-family: 'JetBrains Mono', monospace;
         background-color: var(--washColor);
         border-radius: 1.11em;
         cursor: pointer;
@@ -239,8 +249,8 @@
       }
 
       code {
-        font-family: monospace;
-        font-size: 1em;
+        font-family: 'JetBrains Mono', monospace;
+        font-size: 0.9em;
       }
 
       pre code {
