@@ -58,10 +58,38 @@
         position: relative;
       }
 
+      .message:last-child {
+        padding-bottom: 0;
+      }
+      .message:last-child {
+        padding-bottom: 0;
+      }
+
       .message-content {
         position: relative;
         display: inline-block;
         max-width: 100%;
+      }
+
+      .message-content br {
+        content: '';
+        display: block;
+        margin: 0.6em 0;
+      }
+
+      pre br,
+      pre br + br {
+        margin: 0;
+      }
+
+      .user-message {
+        padding-left: 20%;
+        text-align: right;
+      }
+
+      .assistant-message {
+        padding-right: 20%;
+        text-align: left;
       }
 
       .think {
@@ -73,15 +101,6 @@
         overflow: hidden;
         transition: max-height 0.3s ease-out;
         max-height: none; /* Remove initial max-height */
-      }
-
-      .think.collapsed {
-        max-height: 1.5em;
-        cursor: pointer;
-      }
-
-      .think.collapsing {
-        transition: max-height 0.3s ease-out;
       }
 
       .think::before {
@@ -99,30 +118,27 @@
         text-align: center;
       }
 
+      .think::after {
+        content: '';
+        position: absolute;
+        left: 0.4em; /* Center it with the arrow */
+        top: 1.5em; /* Start below the arrow */
+        bottom: 0;
+        width: 4px;
+        background-color: var(--washColor);
+      }
+
+      .think.collapsed {
+        max-height: 1.5em;
+        cursor: pointer;
+      }
+
+      .think.collapsing {
+        transition: max-height 0.3s ease-out;
+      }
+
       .think.collapsed::before {
         transform: rotate(-90deg);
-      }
-
-      .think.collapsed::after {
-        content: '...';
-        color: #bababa;
-      }
-
-      .message:last-child {
-        padding-bottom: 0;
-      }
-      .message:last-child {
-        padding-bottom: 0;
-      }
-
-      .user-message {
-        padding-left: 20%;
-        text-align: right;
-      }
-
-      .assistant-message {
-        padding-right: 20%;
-        text-align: left;
       }
 
       /* Copy button styling */
@@ -366,6 +382,10 @@
 
         .think {
           color: #999999; /* Lighter gray for dark mode */
+        }
+
+        .think::after {
+          background-color: var(--washColorDark);
         }
 
         .copy-buttons {
@@ -624,6 +644,9 @@
     }
 
     function formatMessage(content) {
+      // Convert newlines to <br> tags before any other processing
+      content = content.replace(/\n/g, '<br>');
+
       // Handle complete think tags
       content = content.replace(
         /<think>([\s\S]*?)<\/think>/g,
