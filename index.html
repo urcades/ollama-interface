@@ -39,6 +39,16 @@
         box-sizing: border-box;
       }
 
+      /* Font settings */
+      @font-face {
+        font-family: 'JetBrains Mono';
+        src: url('https://cdn.jsdelivr.net/gh/JetBrains/JetBrainsMono/web/woff2/JetBrainsMono-Regular.woff2')
+          format('woff2');
+        font-weight: normal;
+        font-style: normal;
+        font-display: swap;
+      }
+
       /* Chat container styling */
 
       html,
@@ -52,15 +62,15 @@
         flex-direction: column;
         background-color: var(--bgColor);
         color: var(--txtColor);
-        font-family: serif;
+        font-family: 'JetBrains Mono', monospace;
         /* -webkit-font-smoothing: antialiased; */
-        font-size: 1.23em;
+        font-size: 1em;
       }
 
       #chat-container {
         flex-grow: 1;
         overflow-y: auto;
-        padding: 1em 1em 0 1em;
+        padding: 1em 4em;
       }
 
       /* Chat message styling */
@@ -70,10 +80,38 @@
         position: relative;
       }
 
+      .message:last-child {
+        padding-bottom: 0;
+      }
+      .message:last-child {
+        padding-bottom: 0;
+      }
+
       .message-content {
         position: relative;
         display: inline-block;
         max-width: 100%;
+      }
+
+      .message-content br {
+        content: '';
+        display: block;
+        margin: 0.6em 0;
+      }
+
+      pre br,
+      pre br + br {
+        margin: 0;
+      }
+
+      .user-message {
+        padding-left: 20%;
+        text-align: right;
+      }
+
+      .assistant-message {
+        padding-right: 20%;
+        text-align: left;
       }
 
       .think {
@@ -85,15 +123,6 @@
         overflow: hidden;
         transition: max-height 0.3s ease-out;
         max-height: none; /* Remove initial max-height */
-      }
-
-      .think.collapsed {
-        max-height: 1.5em;
-        cursor: pointer;
-      }
-
-      .think.collapsing {
-        transition: max-height 0.3s ease-out;
       }
 
       .think::before {
@@ -111,30 +140,27 @@
         text-align: center;
       }
 
+      .think::after {
+        content: '';
+        position: absolute;
+        left: 0.4em; /* Center it with the arrow */
+        top: 1.5em; /* Start below the arrow */
+        bottom: 0;
+        width: 4px;
+        background-color: var(--washColor);
+      }
+
+      .think.collapsed {
+        max-height: 1.5em;
+        cursor: pointer;
+      }
+
+      .think.collapsing {
+        transition: max-height 0.3s ease-out;
+      }
+
       .think.collapsed::before {
         transform: rotate(-90deg);
-      }
-
-      .think.collapsed::after {
-        content: '...';
-        color: #bababa;
-      }
-
-      .message:last-child {
-        padding-bottom: 0;
-      }
-      .message:last-child {
-        padding-bottom: 0;
-      }
-
-      .user-message {
-        padding-left: 20%;
-        text-align: right;
-      }
-
-      .assistant-message {
-        padding-right: 20%;
-        text-align: left;
       }
 
       /* Copy button styling */
@@ -186,7 +212,7 @@
         padding: 0.88em 1.11em;
         border: none;
         outline: none;
-        font-family: serif;
+        font-family: 'JetBrains Mono', monospace;
         font-size: 1em;
         color: var(--txtColor);
         background-color: var(--washColor);
@@ -199,7 +225,7 @@
         border: none;
         outline: none;
         font-size: 1em;
-        font-family: serif;
+        font-family: 'JetBrains Mono', monospace;
         background-color: var(--washColor);
         border-radius: 1.11em;
         -webkit-appearance: none;
@@ -213,7 +239,7 @@
         border: none;
         outline: none;
         font-size: 1em;
-        font-family: serif;
+        font-family: 'JetBrains Mono', monospace;
         background-color: var(--washColor);
         border-radius: 1.11em;
         cursor: pointer;
@@ -235,8 +261,8 @@
       }
 
       code {
-        font-family: monospace;
-        font-size: 1em;
+        font-family: 'JetBrains Mono', monospace;
+        font-size: 0.9em;
       }
 
       pre code {
@@ -378,6 +404,10 @@
 
         .think {
           color: #999999; /* Lighter gray for dark mode */
+        }
+
+        .think::after {
+          background-color: var(--washColorDark);
         }
 
         .copy-buttons {
@@ -636,6 +666,9 @@
     }
 
     function formatMessage(content) {
+      // Convert newlines to <br> tags before any other processing
+      content = content.replace(/\n/g, '<br>');
+
       // Handle complete think tags
       content = content.replace(
         /<think>([\s\S]*?)<\/think>/g,
