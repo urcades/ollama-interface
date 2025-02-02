@@ -1,10 +1,10 @@
 {
   "name": "Ollama Chat Interface",
-  "short_name": "Ollama Chat",
+  "short_name": "Chat",
   "description": "A single-file html interface for Ollama-served models",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#ffffff",
+  "background_color": "#1a1818",
   "theme_color": "#1a1818",
   "icons": [
     {
@@ -18,4 +18,4 @@
       "type": "image/png"
     }
   ]
-} 
+}

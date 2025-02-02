@@ -4,17 +4,29 @@
     <meta charset="UTF-8" />
     <meta http-equiv="X-UA-Compatible" content="IE=edge" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
     <title>Chat</title>
+    <meta property="og:title" content="Chat" />
+
     <meta
       name="description"
       content="A single-file html interface for Ollama-served models"
     />
+    <meta
+      property="og:description"
+      content="A single-file html interface for Ollama-served models"
+    />
     <link rel="manifest" href="/manifest.json" />
+    <meta name="color-scheme" content="light dark" />
     <meta name="theme-color" content="#1a1818" />
-    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black" />
     <meta name="apple-mobile-web-app-title" content="Ollama Chat" />
     <link rel="apple-touch-icon" href="/icons/icon-192x192.png" />
+    <link rel="icon" type="image/png" href="/icons/icon-32x32.png" />
+    <meta name="robots" content="noindex, nofollow" />
+    <meta name="format-detection" content="telephone=no" />
+    <meta property="og:type" content="website" />
     <style>
       /* Reset, defaults, etc. */
 
@@ -419,7 +431,7 @@
   </body>
   <script>
     let currentModel = 'deepseek-r1:8b';
-    const SYSTEM_PROMPT = `
+    let SYSTEM_PROMPT = `
         Your name is Oh.
         You will respond in a moderately friendly and straightforward manner.
         Your primary goal is to act as a helpful entity, providing information and answering questions to the best of your ability.
