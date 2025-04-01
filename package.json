@@ -1,0 +1,6 @@
+{
+  "dependencies": {
+    "chromadb": "^2.1.0",
+    "chromadb-default-embed": "^2.14.0"
+  }
+}
