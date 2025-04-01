@@ -2,6 +2,10 @@ import express from "express";
 import path from "path";
 import { fileURLToPath } from "url";
 import { ChromaClient } from "chromadb";
+import dotenv from "dotenv";
+
+// Load environment variables
+dotenv.config();
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -11,11 +15,11 @@ const chromaClient = new ChromaClient({
   path: "https://api.trychroma.com:8000",
   auth: {
     provider: "token",
-    credentials: "ck-5FPX8tfLdk177ox2htSFywkEtbQcgmVjhd3qMzF9maMe",
+    credentials: process.env.CHROMA_API_KEY,
     tokenHeaderType: "X_CHROMA_TOKEN",
   },
-  tenant: "cea6a248-e1c1-49ed-b970-0d933f857f03",
-  database: "OhChat",
+  tenant: process.env.CHROMA_TENANT,
+  database: process.env.CHROMA_DATABASE,
 });
 
 // Initialize or get the collection
@@ -54,7 +58,7 @@ async function initChroma() {
 initChroma();
 
 const app = express();
-const port = 3333;
+const port = process.env.PORT || 3333;
 
 // Middleware for parsing JSON and urlencoded data
 app.use(express.json());
@@ -66,6 +70,14 @@ app.use(express.static(__dirname));
 // Serve index.html at the root route
 app.get("/", (req, res) => {
   res.sendFile(path.join(__dirname, "index.html"));
+});
+
+// API endpoint to serve configuration
+app.get("/api/config", (req, res) => {
+  // Only provide what's needed for the client
+  res.json({
+    nousApiKey: process.env.NOUS_API_KEY,
+  });
 });
 
 // API endpoint to handle chat interactions and store in Chroma

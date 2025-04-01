@@ -277,7 +277,6 @@
       defaultModel: "deepseek-r1:8b",
       apiEndpoint: "http://localhost:11434/api",
       nousApiEndpoint: "https://inference-api.nousresearch.com/v1",
-      nousApiKey: "sk-um2_7wIc68ED2QxJwPi7TQ",
       availableModels: [
         { name: "deepseek-r1:8b", provider: "ollama" },
         { name: "Hermes-3-Llama-3.1-70B", provider: "nous" },
@@ -703,6 +702,21 @@
       }
     };
 
+    // Fetch API keys from server
+    async function fetchApiKeys() {
+      try {
+        const response = await fetch("/api/config");
+        if (response.ok) {
+          const data = await response.json();
+          if (data.nousApiKey) {
+            CONFIG.nousApiKey = data.nousApiKey;
+          }
+        }
+      } catch (error) {
+        console.error("Failed to fetch API keys:", error);
+      }
+    }
+
     // Event Listeners
     DOM.form.addEventListener("submit", handleSubmit);
     DOM.input.addEventListener("keydown", (e) => {
@@ -730,7 +744,10 @@
     });
 
     // Initialize
-    window.addEventListener("load", () => {
+    window.addEventListener("load", async () => {
+      // Fetch API keys first
+      await fetchApiKeys();
+
       DOM.input.focus();
       fetchAvailableModels();
     });
