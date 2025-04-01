@@ -187,6 +187,31 @@
         }
       }
 
+      /* Memory Results */
+      .memory-results {
+        background-color: var(--wash-color-light);
+        border-radius: var(--border-radius);
+        padding: var(--spacing-md);
+        margin-bottom: var(--spacing-md);
+        max-height: 200px;
+        overflow-y: auto;
+        display: none;
+      }
+
+      .memory-item {
+        padding: var(--spacing-sm) 0;
+        border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+      }
+
+      .memory-item:last-child {
+        border-bottom: none;
+      }
+
+      .memory-label {
+        font-weight: bold;
+        margin-bottom: var(--spacing-sm);
+      }
+
       /* Dark Mode */
       @media (prefers-color-scheme: dark) {
         body {
@@ -214,11 +239,20 @@
         #input-container {
           background-color: rgba(26, 24, 24, 0.8);
         }
+
+        .memory-results {
+          background-color: var(--wash-color-dark);
+        }
+
+        .memory-item {
+          border-bottom-color: rgba(255, 255, 255, 0.1);
+        }
       }
     </style>
   </head>
   <body>
     <div id="chat-container"></div>
+    <div id="memory-results" class="memory-results"></div>
     <div id="input-container">
       <form id="prompt-form">
         <input
@@ -230,6 +264,7 @@
         <select id="model-selector" class="button-like">
           <option value="">Loading models...</option>
         </select>
+        <button type="button" id="memory-button">Memory</button>
         <button type="submit">Send</button>
       </form>
     </div>
@@ -257,6 +292,8 @@
       input: document.getElementById("prompt-input"),
       chat: document.getElementById("chat-container"),
       modelSelector: document.getElementById("model-selector"),
+      memoryButton: document.getElementById("memory-button"),
+      memoryResults: document.getElementById("memory-results"),
     };
 
     // State management
@@ -379,6 +416,92 @@
       return messageDiv;
     };
 
+    // Function to store conversation in Chroma
+    const storeConversationInChroma = async (
+      userMessage,
+      assistantResponse,
+      model
+    ) => {
+      try {
+        const response = await fetch("/api/chat", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            userMessage,
+            assistantResponse,
+            model,
+            timestamp: new Date().toISOString(),
+          }),
+        });
+
+        const data = await response.json();
+
+        if (!response.ok) {
+          console.warn(
+            "Failed to store conversation in memory:",
+            data.error || response.statusText
+          );
+        } else if (data.warning) {
+          console.warn(
+            "Warning while storing conversation:",
+            data.warning,
+            data.details
+          );
+          // You could display a small notification to the user here if desired
+        }
+      } catch (error) {
+        console.error("Error storing conversation in memory:", error);
+        // No need to alert the user - this is a background operation
+      }
+    };
+
+    // Function to search conversation memory
+    const searchConversationMemory = async (query, limit = 5) => {
+      try {
+        const response = await fetch("/api/memory/search", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ query, limit }),
+        });
+
+        const data = await response.json();
+
+        if (!response.ok) {
+          if (response.status === 429) {
+            // Rate limit error
+            return {
+              error: "Rate limit exceeded. Please try again later.",
+              documents: [[]],
+              metadatas: [[]],
+            };
+          } else {
+            console.warn(
+              "Failed to search memory:",
+              data.error || response.statusText
+            );
+            return {
+              error: data.error || "Memory search failed",
+              documents: [[]],
+              metadatas: [[]],
+            };
+          }
+        }
+
+        return data;
+      } catch (error) {
+        console.error("Error searching conversation memory:", error);
+        return {
+          error: error.message,
+          documents: [[]],
+          metadatas: [[]],
+        };
+      }
+    };
+
     const handleSubmit = async (e) => {
       e.preventDefault();
       const prompt = DOM.input.value.trim();
@@ -474,6 +597,13 @@
           role: "assistant",
           content: assistantResponse,
         });
+
+        // Store the conversation in Chroma
+        await storeConversationInChroma(
+          prompt,
+          assistantResponse,
+          currentModel
+        );
       } catch (error) {
         if (error.name === "AbortError") {
           console.log("Request cancelled");
@@ -490,6 +620,89 @@
       }
     };
 
+    // Handle memory button click
+    const handleMemorySearch = async () => {
+      const query = DOM.input.value.trim();
+      if (!query) {
+        alert("Please enter a search query first");
+        return;
+      }
+
+      try {
+        // Show loading state
+        DOM.memoryButton.textContent = "Searching...";
+        DOM.memoryButton.disabled = true;
+
+        // Search memory
+        const results = await searchConversationMemory(query);
+
+        if (results.error) {
+          DOM.memoryResults.innerHTML = `<div class='memory-item'>${results.error}</div>`;
+          DOM.memoryResults.style.display = "block";
+          return;
+        }
+
+        if (
+          !results.documents ||
+          !results.documents[0] ||
+          results.documents[0].length === 0
+        ) {
+          DOM.memoryResults.innerHTML =
+            "<div class='memory-item'>No relevant memories found.</div>";
+          DOM.memoryResults.style.display = "block";
+          return;
+        }
+
+        // Display results
+        DOM.memoryResults.innerHTML =
+          "<div class='memory-label'>Related memories:</div>";
+
+        results.documents[0].forEach((doc, index) => {
+          const metadata = results.metadatas[0][index];
+          const date =
+            metadata && metadata.timestamp
+              ? new Date(metadata.timestamp).toLocaleString()
+              : "Unknown date";
+          const modelName =
+            metadata && metadata.model ? metadata.model : "Unknown";
+
+          const memoryItem = document.createElement("div");
+          memoryItem.classList.add("memory-item");
+          memoryItem.innerHTML = `
+            <div><strong>Date:</strong> ${date}</div>
+            <div><strong>Model:</strong> ${modelName}</div>
+            <div>${doc}</div>
+          `;
+
+          // Add a button to use this memory in current context
+          const useButton = document.createElement("button");
+          useButton.textContent = "Use Context";
+          useButton.style.marginTop = "8px";
+          useButton.onclick = () => {
+            // Add to conversation history as a system message
+            conversationHistory.push({
+              role: "system",
+              content: `Previous relevant conversation: ${doc}`,
+            });
+            DOM.memoryResults.style.display = "none";
+            DOM.input.focus();
+          };
+
+          memoryItem.appendChild(useButton);
+          DOM.memoryResults.appendChild(memoryItem);
+        });
+
+        DOM.memoryResults.style.display = "block";
+      } catch (error) {
+        console.error("Error searching memory:", error);
+        DOM.memoryResults.innerHTML = `<div class='memory-item'>Error searching memories: ${error.message}</div>`;
+        DOM.memoryResults.style.display = "block";
+      } finally {
+        DOM.memoryButton.textContent = "Memory";
+        DOM.memoryButton.disabled = false;
+      }
+    };
+
     // Event Listeners
     DOM.form.addEventListener("submit", handleSubmit);
     DOM.input.addEventListener("keydown", (e) => {
@@ -503,6 +716,17 @@
       currentModel = e.target.value;
       currentProvider = selectedOption.dataset.provider;
       updatePlaceholder();
+    });
+    DOM.memoryButton.addEventListener("click", handleMemorySearch);
+
+    // Hide memory results when clicking elsewhere
+    document.addEventListener("click", (e) => {
+      if (
+        !DOM.memoryResults.contains(e.target) &&
+        e.target !== DOM.memoryButton
+      ) {
+        DOM.memoryResults.style.display = "none";
+      }
     });
 
     // Initialize
