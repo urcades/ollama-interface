@@ -12,6 +12,25 @@
   --spacing-sm: 0.5em;
   --spacing-md: 0.88em;
   --spacing-lg: 1em;
+  
+  /* New variables for repeated values */
+  --icon-color-light: #777;
+  --icon-color-light-hover: #333;
+  --icon-color-dark: #aaa;
+  --icon-color-dark-hover: #fff;
+  --overlay-bg: rgba(0, 0, 0, 0.5);
+  --input-container-bg-light: rgba(255, 255, 255, 0.8);
+  --input-container-bg-dark: rgba(26, 24, 24, 0.8);
+  --blur-amount: 33px;
+  --icon-size: 1.2em;
+  --preview-size: 2em;
+  --z-index-input: 2;
+  --transform-center: translate(-50%, -50%);
+  --transform-center-y: translateY(-50%);
+  --image-max-width: 300px;
+  --image-max-height: 200px;
+  --think-color-light: #bababa;
+  --think-color-dark: #999999;
 }
 
 /* Base Reset */
@@ -50,9 +69,9 @@ body {
 #input-container {
   padding: var(--spacing-lg);
   position: relative;
-  backdrop-filter: blur(33px);
-  -webkit-backdrop-filter: blur(33px);
-  background-color: rgba(255, 255, 255, 0.8);
+  backdrop-filter: blur(var(--blur-amount));
+  -webkit-backdrop-filter: blur(var(--blur-amount));
+  background-color: var(--input-container-bg-light);
 }
 
 /* Messages */
@@ -75,7 +94,7 @@ body {
 
 .think {
   font-style: italic;
-  color: #bababa;
+  color: var(--think-color-light);
   margin: var(--spacing-lg) 0;
 }
 
@@ -121,7 +140,7 @@ button {
   position: absolute;
   right: 0.5em;
   top: 50%;
-  transform: translateY(-50%);
+  transform: var(--transform-center-y);
   background: transparent;
   border: none;
   padding: 0.5em;
@@ -129,17 +148,17 @@ button {
   display: flex;
   align-items: center;
   justify-content: center;
-  z-index: 2;
+  z-index: var(--z-index-input);
 }
 
 #image-upload-btn svg {
-  width: 1.2em;
-  height: 1.2em;
-  fill: #777;
+  width: var(--icon-size);
+  height: var(--icon-size);
+  fill: var(--icon-color-light);
 }
 
 #image-upload-btn:hover svg {
-  fill: #333;
+  fill: var(--icon-color-light-hover);
 }
 
 /* Image preview container */
@@ -147,12 +166,12 @@ button {
   position: absolute;
   right: 0.5em;
   top: 50%;
-  transform: translateY(-50%);
-  height: 2em;
-  width: 2em;
+  transform: var(--transform-center-y);
+  height: var(--preview-size);
+  width: var(--preview-size);
   border-radius: var(--border-radius-sm);
   overflow: hidden;
-  z-index: 2;
+  z-index: var(--z-index-input);
 }
 
 #image-preview {
@@ -165,13 +184,13 @@ button {
   position: absolute;
   top: 50%;
   left: 50%;
-  transform: translate(-50%, -50%);
-  background: rgba(0, 0, 0, 0.5);
+  transform: var(--transform-center);
+  background: var(--overlay-bg);
   color: white;
   border: none;
   border-radius: 50%;
-  width: 1.2em;
-  height: 1.2em;
+  width: var(--icon-size);
+  height: var(--icon-size);
   font-size: 0.9em;
   line-height: 1;
   cursor: pointer;
@@ -234,8 +253,8 @@ pre code {
 
 /* User message with image */
 .user-message .image-attachment {
-  max-width: 300px;
-  max-height: 200px;
+  max-width: var(--image-max-width);
+  max-height: var(--image-max-height);
   border-radius: var(--border-radius);
   margin-bottom: var(--spacing-sm);
   object-fit: contain;
@@ -294,18 +313,18 @@ pre code {
   }
 
   .think {
-    color: #999999;
+    color: var(--think-color-dark);
   }
 
   #input-container {
-    background-color: rgba(26, 24, 24, 0.8);
+    background-color: var(--input-container-bg-dark);
   }
   
   #image-upload-btn svg {
-    fill: #aaa;
+    fill: var(--icon-color-dark);
   }
   
   #image-upload-btn:hover svg {
-    fill: #fff;
+    fill: var(--icon-color-dark-hover);
   }
 } 

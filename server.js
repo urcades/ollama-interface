@@ -9,25 +9,52 @@ import Cerebras from "@cerebras/cerebras_cloud_sdk";
 // Load environment variables
 dotenv.config();
 
-// Initialize Cerebras client
-const cerebrasClient = process.env.CEREBAS_API_KEY
-  ? new Cerebras({
-      apiKey: process.env.CEREBAS_API_KEY,
-      organizationId: process.env.CEREBAS_ORG_ID, // Add organization ID
-    })
-  : null;
+// Configuration
+const config = {
+  port: process.env.PORT || 3333,
+  chroma: {
+    path: "https://api.trychroma.com:8000",
+    auth: {
+      provider: "token",
+      credentials: process.env.CHROMA_API_KEY,
+      tokenHeaderType: "X_CHROMA_TOKEN",
+    },
+    tenant: process.env.CHROMA_TENANT,
+    database: process.env.CHROMA_DATABASE,
+  },
+  queue: {
+    minApiCallInterval: 30000, // 30 seconds
+    maxRetriesPerHour: 10,
+    maxConsecutiveFailures: 3,
+  },
+  batch: {
+    maxBatchSize: 3,
+    batchTimeout: 60000, // 1 minute
+    maxPendingItems: 100,
+  },
+};
 
-// Simple queue system for managing Chroma API calls
-const chromaQueue = {
-  queue: [],
-  processing: false,
+// Initialize services
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+/**
+ * Queue system for managing Chroma API calls with rate limiting
+ */
+class ChromaQueue {
+  constructor() {
+    this.queue = [];
+    this.processing = false;
+    this.lastApiCall = 0;
+    this.consecutiveFailures = 0;
+  }
 
   add(operation, callback) {
     this.queue.push({ operation, callback });
     if (!this.processing) {
       this.processNext();
     }
-  },
+  }
 
   async processNext() {
     if (this.queue.length === 0) {
@@ -36,98 +63,74 @@ const chromaQueue = {
     }
 
     this.processing = true;
-    const item = this.queue.shift();
+    const { operation, callback } = this.queue.shift();
 
     try {
-      // Ensure minimum time between API calls
       const now = Date.now();
-      const timeSinceLastCall = now - lastChromaApiCall;
+      const timeSinceLastCall = now - this.lastApiCall;
 
-      if (timeSinceLastCall < MIN_API_CALL_INTERVAL) {
-        const waitTime = MIN_API_CALL_INTERVAL - timeSinceLastCall;
+      if (timeSinceLastCall < config.queue.minApiCallInterval) {
+        const waitTime = config.queue.minApiCallInterval - timeSinceLastCall;
         console.log(`Queue: waiting ${waitTime}ms before next Chroma API call`);
         await new Promise((resolve) => setTimeout(resolve, waitTime));
       }
 
-      // Update timestamp before making the call
-      lastChromaApiCall = Date.now();
-
-      // Execute the operation
-      const result = await item.operation();
-      item.callback(null, result);
+      this.lastApiCall = Date.now();
+      const result = await operation();
+      callback(null, result);
+      this.consecutiveFailures = 0;
     } catch (error) {
-      item.callback(error);
+      callback(error);
+      this.consecutiveFailures++;
     } finally {
-      // Add a significant delay between queue processing to prevent bursts
-      const delay = Math.min(30000, 5000 * (consecutiveFailures + 1));
+      const delay = Math.min(30000, 5000 * (this.consecutiveFailures + 1));
       console.log(
         `Adding ${delay / 1000}s delay before processing next queue item`
       );
       setTimeout(() => this.processNext(), delay);
     }
-  },
-};
+  }
+}
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-
-// Initialize Chroma client
-const chromaClient = new ChromaClient({
-  path: "https://api.trychroma.com:8000",
-  auth: {
-    provider: "token",
-    credentials: process.env.CHROMA_API_KEY,
-    tokenHeaderType: "X_CHROMA_TOKEN",
-  },
-  tenant: process.env.CHROMA_TENANT,
-  database: process.env.CHROMA_DATABASE,
-});
-
-// Initialize or get the collection
-let conversationCollection;
-let lastChromaApiCall = 0;
-const MIN_API_CALL_INTERVAL = 30000; // Increased to 30 seconds
-const MAX_RETRIES_PER_HOUR = 10; // Limit total retries per hour
-let retryCount = 0;
-let lastResetTime = Date.now();
-let consecutiveFailures = 0;
-const MAX_CONSECUTIVE_FAILURES = 3;
-
-// Conversation batching system
-const conversationBatch = {
-  items: [],
-  timer: null,
-  maxBatchSize: 3, // Reduced batch size
-  batchTimeout: 60000, // Increased to 1 minute
-  cooldownActive: false,
-  cooldownTimer: null,
+/**
+ * Batch processing system for conversation storage
+ */
+class ConversationBatch {
+  constructor() {
+    this.items = [];
+    this.timer = null;
+    this.cooldownActive = false;
+    this.cooldownTimer = null;
+  }
 
   add(id, document, metadata) {
     this.items.push({ id, document, metadata });
     console.log(`Added to batch queue (size: ${this.items.length})`);
 
-    // If this is the first item, start the timer
     if (this.items.length === 1 && !this.cooldownActive) {
       this.resetTimer();
     }
 
-    // If we've reached max batch size and not in cooldown, process
-    if (this.items.length >= this.maxBatchSize && !this.cooldownActive) {
+    if (
+      this.items.length >= config.batch.maxBatchSize &&
+      !this.cooldownActive
+    ) {
       this.processNow();
     }
-  },
+  }
 
   resetTimer() {
-    // Clear existing timer if any
     if (this.timer) {
       clearTimeout(this.timer);
     }
 
-    // Set new timer if not in cooldown
     if (!this.cooldownActive) {
-      this.timer = setTimeout(() => this.processNow(), this.batchTimeout);
+      this.timer = setTimeout(
+        () => this.processNow(),
+        config.batch.batchTimeout
+      );
     }
-  },
+  }
 
   activateCooldown(minutes) {
     this.cooldownActive = true;
@@ -139,159 +142,153 @@ const conversationBatch = {
       clearTimeout(this.cooldownTimer);
     }
 
-    // Set cooldown timer
     this.cooldownTimer = setTimeout(() => {
       this.cooldownActive = false;
       console.log("✅ Cooldown period ended, resuming normal operations");
 
-      // Process any pending items
       if (this.items.length > 0) {
         this.processNow();
       }
     }, minutes * 60 * 1000);
-  },
-
-  handleRateLimitError() {
-    consecutiveFailures++;
-
-    if (consecutiveFailures >= MAX_CONSECUTIVE_FAILURES) {
-      // Exponential cooldown: start with 5 minutes, then 10, then 20, etc.
-      const cooldownMinutes = Math.min(
-        5 * Math.pow(2, consecutiveFailures - MAX_CONSECUTIVE_FAILURES),
-        60
-      );
-      this.activateCooldown(cooldownMinutes);
-    }
-  },
-
-  handleSuccess() {
-    // Reset consecutive failures counter on success
-    consecutiveFailures = 0;
-  },
+  }
 
   async processNow() {
     if (this.items.length === 0 || this.cooldownActive) return;
 
-    // Reset hour-based retry counter if needed
-    const now = Date.now();
-    if (now - lastResetTime > 60 * 60 * 1000) {
-      retryCount = 0;
-      lastResetTime = now;
-    }
-
-    // If we've exceeded our hourly retry limit, activate cooldown
-    if (retryCount >= MAX_RETRIES_PER_HOUR) {
-      this.activateCooldown(60); // 1 hour cooldown
-      return;
-    }
-
     const itemsToProcess = [...this.items];
-    this.items = []; // Clear the queue
+    this.items = [];
 
     if (this.timer) {
       clearTimeout(this.timer);
       this.timer = null;
     }
 
-    const ids = itemsToProcess.map((item) => item.id);
-
-    // Use significantly shortened content to reduce payload size
-    const documents = itemsToProcess.map((item) => {
-      const userPart =
-        item.metadata.userMessage.length > 100
-          ? item.metadata.userMessage.substring(0, 100) + "..."
-          : item.metadata.userMessage;
-
-      const assistantPart =
-        item.metadata.assistantResponse.length > 100
-          ? item.metadata.assistantResponse.substring(0, 100) + "..."
-          : item.metadata.assistantResponse;
-
-      return `User: ${userPart}\nAssistant: ${assistantPart}`;
-    });
-
-    const metadatas = itemsToProcess.map((item) => ({
-      ...item.metadata,
-      truncated: true,
-      timestamp: item.metadata.timestamp,
-    }));
-
+    const { ids, documents, metadatas } = this.prepareBatchData(itemsToProcess);
     console.log(`Processing batch of ${ids.length} conversations`);
 
     try {
-      retryCount++;
-
       await rateLimitedChromaOperation(async () => {
-        await conversationCollection.add({
-          ids,
-          documents,
-          metadatas,
-        });
+        await conversationCollection.add({ ids, documents, metadatas });
       });
 
       console.log(
         `✅ Successfully stored batch of ${ids.length} conversations in Chroma`
       );
-      this.handleSuccess();
     } catch (error) {
       console.warn("❌ Failed to store conversation batch:", error.message);
       this.handleRateLimitError();
-
-      // Store failed items locally for future retry
       storeItemsLocally(itemsToProcess);
     }
-  },
-};
+  }
 
-// Store messages locally when Chroma is unavailable
+  prepareBatchData(items) {
+    const ids = items.map((item) => item.id);
+    const documents = items.map((item) => {
+      const truncateText = (text) =>
+        text.length > 100 ? `${text.substring(0, 100)}...` : text;
+      return `User: ${truncateText(
+        item.metadata.userMessage
+      )}\nAssistant: ${truncateText(item.metadata.assistantResponse)}`;
+    });
+    const metadatas = items.map((item) => ({
+      ...item.metadata,
+      truncated: true,
+      timestamp: item.metadata.timestamp,
+    }));
+
+    return { ids, documents, metadatas };
+  }
+
+  handleRateLimitError() {
+    if (this.consecutiveFailures >= config.queue.maxConsecutiveFailures) {
+      const cooldownMinutes = Math.min(
+        5 *
+          Math.pow(
+            2,
+            this.consecutiveFailures - config.queue.maxConsecutiveFailures
+          ),
+        60
+      );
+      this.activateCooldown(cooldownMinutes);
+    }
+  }
+}
+
+// Initialize services
+const chromaQueue = new ChromaQueue();
+const conversationBatch = new ConversationBatch();
 const pendingItems = [];
 const PENDING_ITEMS_FILE = path.join(__dirname, "pending_conversations.json");
 
-// Load any saved pending items on startup
-function loadPendingItems() {
-  try {
-    if (fs.existsSync(PENDING_ITEMS_FILE)) {
-      const data = fs.readFileSync(PENDING_ITEMS_FILE, "utf8");
-      const loaded = JSON.parse(data);
+// Initialize Chroma client
+const chromaClient = new ChromaClient(config.chroma);
+let conversationCollection;
 
-      if (Array.isArray(loaded) && loaded.length > 0) {
-        pendingItems.push(...loaded);
-        console.log(`Loaded ${loaded.length} pending conversations from disk`);
+// Initialize Cerebras client
+const cerebrasClient = process.env.CEREBAS_API_KEY
+  ? new Cerebras({
+      apiKey: process.env.CEREBAS_API_KEY,
+      organizationId: process.env.CEREBAS_ORG_ID,
+    })
+  : null;
+
+/**
+ * Utility functions for file operations
+ */
+const fileUtils = {
+  loadPendingItems() {
+    try {
+      if (fs.existsSync(PENDING_ITEMS_FILE)) {
+        const data = fs.readFileSync(PENDING_ITEMS_FILE, "utf8");
+        const loaded = JSON.parse(data);
+
+        if (Array.isArray(loaded) && loaded.length > 0) {
+          pendingItems.push(...loaded);
+          console.log(
+            `Loaded ${loaded.length} pending conversations from disk`
+          );
+        }
       }
+    } catch (error) {
+      console.error("Error loading pending items from disk:", error.message);
     }
-  } catch (error) {
-    console.error("Error loading pending items from disk:", error.message);
-  }
-}
+  },
 
-// Save pending items to disk
-function savePendingItems() {
-  try {
-    fs.writeFileSync(PENDING_ITEMS_FILE, JSON.stringify(pendingItems), "utf8");
-    console.log(`Saved ${pendingItems.length} pending conversations to disk`);
-  } catch (error) {
-    console.error("Error saving pending items to disk:", error.message);
-  }
-}
+  savePendingItems() {
+    try {
+      fs.writeFileSync(
+        PENDING_ITEMS_FILE,
+        JSON.stringify(pendingItems),
+        "utf8"
+      );
+      console.log(`Saved ${pendingItems.length} pending conversations to disk`);
+    } catch (error) {
+      console.error("Error saving pending items to disk:", error.message);
+    }
+  },
 
-function storeItemsLocally(items) {
-  console.log(`Storing ${items.length} conversations locally for future retry`);
-  pendingItems.push(...items);
-
-  // If we're accumulating too many items, trim the oldest ones
-  if (pendingItems.length > 100) {
-    const removed = pendingItems.splice(0, pendingItems.length - 100);
+  storeItemsLocally(items) {
     console.log(
-      `Removed ${removed.length} oldest pending items due to capacity limits`
+      `Storing ${items.length} conversations locally for future retry`
     );
-  }
+    pendingItems.push(...items);
 
-  // Save to disk
-  savePendingItems();
-}
+    if (pendingItems.length > config.batch.maxPendingItems) {
+      const removed = pendingItems.splice(
+        0,
+        pendingItems.length - config.batch.maxPendingItems
+      );
+      console.log(
+        `Removed ${removed.length} oldest pending items due to capacity limits`
+      );
+    }
+
+    this.savePendingItems();
+  },
+};
 
 // Load pending items at startup
-loadPendingItems();
+fileUtils.loadPendingItems();
 
 // Try to process pending items when server is idle
 setInterval(() => {
@@ -311,28 +308,26 @@ setInterval(() => {
     });
 
     // Save updated pending items list
-    savePendingItems();
+    fileUtils.savePendingItems();
   }
 }, 10 * 60 * 1000); // Check every 10 minutes
 
-// Helper for rate-limited Chroma operations with retry
+/**
+ * Helper for rate-limited Chroma operations with retry
+ */
 async function rateLimitedChromaOperation(operation, maxRetries = 3) {
   return new Promise((resolve, reject) => {
-    // Queue the operation instead of executing immediately
     chromaQueue.add(
       async () => {
-        // Try the operation with exponential backoff
         let lastError;
         for (let attempt = 0; attempt <= maxRetries; attempt++) {
           try {
             if (attempt > 0) {
-              // Much longer exponential backoff with jitter to prevent retry storms
-              // Base: 10s, 30s, 60s for retries 1, 2, 3
               const baseBackoff = Math.min(
                 60000,
                 10000 * Math.pow(3, attempt - 1)
               );
-              const jitter = Math.random() * 10000; // Up to 10s of jitter
+              const jitter = Math.random() * 10000;
               const backoffTime = baseBackoff + jitter;
 
               console.log(
@@ -346,17 +341,13 @@ async function rateLimitedChromaOperation(operation, maxRetries = 3) {
             return await operation();
           } catch (error) {
             lastError = error;
-
-            // Only retry on rate limit errors
-            if (!error.message || !error.message.includes("429")) {
-              throw error; // Don't retry non-rate-limit errors
+            if (!error.message?.includes("429")) {
+              throw error;
             }
 
             console.warn(
               `⚠️ Rate limit hit on attempt ${attempt + 1}/${maxRetries + 1}`
             );
-
-            // If this was the last retry, throw the error
             if (attempt === maxRetries) {
               throw error;
             }
@@ -374,6 +365,9 @@ async function rateLimitedChromaOperation(operation, maxRetries = 3) {
   });
 }
 
+/**
+ * Initialize Chroma collection
+ */
 async function initChroma() {
   console.log("=== INITIALIZING CHROMA ===");
   console.log(
@@ -382,25 +376,21 @@ async function initChroma() {
   console.log(
     `Tenant: ${
       process.env.CHROMA_TENANT
-        ? process.env.CHROMA_TENANT.substring(0, 8) + "..."
+        ? `${process.env.CHROMA_TENANT.substring(0, 8)}...`
         : "No tenant ID"
     }`
   );
   console.log(`Database: ${process.env.CHROMA_DATABASE || "No database name"}`);
 
   try {
-    // First try to get the existing collection
     try {
       console.log("Attempting to get existing collection...");
       conversationCollection = await rateLimitedChromaOperation(async () => {
-        return await chromaClient.getCollection({
-          name: "conversations",
-        });
+        return await chromaClient.getCollection({ name: "conversations" });
       });
       console.log("Successfully connected to existing collection");
     } catch (error) {
-      // If collection doesn't exist, create it
-      if (error.message && error.message.includes("not found")) {
+      if (error.message?.includes("not found")) {
         console.log("Collection not found, creating new collection...");
         conversationCollection = await rateLimitedChromaOperation(async () => {
           return await chromaClient.createCollection({
@@ -410,13 +400,11 @@ async function initChroma() {
         });
         console.log("New collection created successfully");
       } else {
-        // Some other error occurred
         console.error("Error connecting to collection:", error.message);
         throw error;
       }
     }
 
-    // Test the collection with a simple query
     try {
       const count = await rateLimitedChromaOperation(async () => {
         return await conversationCollection.count();
@@ -427,7 +415,6 @@ async function initChroma() {
     }
   } catch (error) {
     console.error("Error initializing Chroma:", error);
-    // Continue without Chroma - application will work but without memory features
     console.log("Application will continue without memory features");
   }
 }
@@ -436,7 +423,6 @@ async function initChroma() {
 initChroma();
 
 const app = express();
-const port = process.env.PORT || 3333;
 
 // Middleware for parsing JSON and urlencoded data
 app.use(express.json());
@@ -647,41 +633,37 @@ app.get("/api/memory/status", (req, res) => {
     batchQueueSize: conversationBatch.items.length,
     pendingItemsCount: pendingItems.length,
     cooldownActive: conversationBatch.cooldownActive,
-    consecutiveFailures,
+    consecutiveFailures: chromaQueue.consecutiveFailures,
     status: conversationBatch.cooldownActive ? "cooldown" : "operational",
   });
 });
 
-app.listen(port, () => {
-  console.log(`Server is running at http://localhost:${port}`);
+app.listen(config.port, () => {
+  console.log(`Server is running at http://localhost:${config.port}`);
 });
 
-// Handle graceful shutdown to ensure pending operations are completed
-process.on("SIGINT", async () => {
-  console.log("Graceful shutdown initiated");
+// Graceful shutdown handlers
+const shutdownHandlers = {
+  async handleShutdown() {
+    console.log("Graceful shutdown initiated");
 
-  // Save any items remaining in the batch queue
-  if (conversationBatch.items.length > 0) {
-    console.log(
-      `Saving ${conversationBatch.items.length} items from batch queue to pending items`
-    );
-    storeItemsLocally(conversationBatch.items);
-    conversationBatch.items = [];
-  }
+    if (conversationBatch.items.length > 0) {
+      console.log(
+        `Saving ${conversationBatch.items.length} items from batch queue to pending items`
+      );
+      fileUtils.storeItemsLocally(conversationBatch.items);
+      conversationBatch.items = [];
+    }
 
-  // If not in cooldown and there are pending items, try to process some
-  if (!conversationBatch.cooldownActive && pendingItems.length > 0) {
-    console.log(
-      `Processing ${Math.min(
-        5,
-        pendingItems.length
-      )} pending conversations before shutdown`
-    );
-    try {
-      // Take at most 5 items to process before shutdown
+    if (!conversationBatch.cooldownActive && pendingItems.length > 0) {
+      console.log(
+        `Processing ${Math.min(
+          5,
+          pendingItems.length
+        )} pending conversations before shutdown`
+      );
       const itemsToProcess = pendingItems.splice(0, 5);
 
-      // Try to process them directly without batching
       for (const item of itemsToProcess) {
         try {
           await rateLimitedChromaOperation(async () => {
@@ -707,43 +689,16 @@ process.on("SIGINT", async () => {
             `Failed to process item ${item.id} during shutdown:`,
             error.message
           );
-          // Put it back in the pending items
           pendingItems.unshift(item);
         }
       }
-
-      // Save any remaining pending items
-      savePendingItems();
-    } catch (error) {
-      console.error(
-        "Failed to process pending conversations during shutdown:",
-        error.message
-      );
     }
-  } else {
-    // Just save pending items
-    savePendingItems();
-  }
 
-  console.log("Shutdown complete");
-  process.exit(0);
-});
+    fileUtils.savePendingItems();
+    console.log("Shutdown complete");
+    process.exit(0);
+  },
+};
 
-process.on("SIGTERM", async () => {
-  console.log("SIGTERM received, initiating shutdown");
-
-  // Save any items remaining in the batch queue
-  if (conversationBatch.items.length > 0) {
-    console.log(
-      `Saving ${conversationBatch.items.length} items from batch queue to pending items`
-    );
-    storeItemsLocally(conversationBatch.items);
-    conversationBatch.items = [];
-  }
-
-  // Save all pending items
-  savePendingItems();
-
-  console.log("Shutdown complete");
-  process.exit(0);
-});
+process.on("SIGINT", shutdownHandlers.handleShutdown);
+process.on("SIGTERM", shutdownHandlers.handleShutdown);
