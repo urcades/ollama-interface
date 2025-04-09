@@ -177,7 +177,7 @@ class ConversationBatch {
     } catch (error) {
       console.warn("❌ Failed to store conversation batch:", error.message);
       this.handleRateLimitError();
-      storeItemsLocally(itemsToProcess);
+      fileUtils.storeItemsLocally(itemsToProcess);
     }
   }
 
@@ -425,7 +425,7 @@ initChroma();
 const app = express();
 
 // Middleware for parsing JSON and urlencoded data
-app.use(express.json());
+app.use(express.json({ limit: "50mb" }));
 app.use(express.urlencoded({ extended: true }));
 
 // Serve static files from the root directory
@@ -462,6 +462,20 @@ app.post("/api/cerebras/chat", async (req, res) => {
       stream = true,
     } = req.body;
 
+    // Ensure there's a system message in the conversation
+    const processedMessages = [...messages];
+    const hasSystemMessage = processedMessages.some(
+      (msg) => msg.role === "system"
+    );
+
+    if (!hasSystemMessage) {
+      // Add a default system message if none exists
+      processedMessages.unshift({
+        role: "system",
+        content: "You are a helpful assistant.",
+      });
+    }
+
     // Set response for streaming
     if (stream) {
       res.setHeader("Content-Type", "text/event-stream");
@@ -470,7 +484,7 @@ app.post("/api/cerebras/chat", async (req, res) => {
     }
 
     const cerebrasStream = await cerebrasClient.chat.completions.create({
-      messages,
+      messages: processedMessages,
       model,
       stream,
       max_completion_tokens,

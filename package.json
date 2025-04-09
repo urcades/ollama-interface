@@ -1,7 +1,7 @@
 {
   "type": "module",
   "scripts": {
-    "dev": "node server.js"
+    "dev": "node src/server.js"
   },
   "dependencies": {
     "@cerebras/cerebras_cloud_sdk": "^1.26.0",

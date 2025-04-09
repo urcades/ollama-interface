@@ -306,7 +306,12 @@ const Chat = (() => {
 
   const getConversationHistory = () => conversationHistory;
 
-  const appendToConversationHistory = (role, content, imageData = null) => {
+  const appendToConversationHistory = (
+    role,
+    content,
+    imageData = null,
+    toolCalls = null
+  ) => {
     // If there's image data for a user message, include it in the conversation history
     if (role === "user" && imageData) {
       // For providers that support image input (e.g., Ollama)
@@ -315,6 +320,27 @@ const Chat = (() => {
         content,
         images: [imageData],
       });
+    } else if (role === "assistant" && toolCalls) {
+      // For assistant messages with tool calls
+      conversationHistory.push({
+        role,
+        content,
+        tool_calls: toolCalls,
+      });
+    } else if (role === "tool") {
+      // For tool responses
+      // Format should be: { tool_call_id: "id", name: "name" }
+      if (typeof toolCalls === "object" && toolCalls !== null) {
+        conversationHistory.push({
+          role,
+          tool_call_id: toolCalls.tool_call_id,
+          name: toolCalls.name,
+          content,
+        });
+      } else {
+        console.warn("Invalid tool call data:", toolCalls);
+        conversationHistory.push({ role, content });
+      }
     } else {
       conversationHistory.push({ role, content });
     }
@@ -627,6 +653,97 @@ const API = (() => {
   };
 })();
 
+// Import tools module at the top of the file
+// import Tools from './tools/index.js';
+
+// Initialize Tools module
+const Tools = (() => {
+  // We'll load and initialize tools here
+  let toolsModule = null;
+
+  // Initialize the module asynchronously
+  const init = async () => {
+    try {
+      // Import using dynamic import() which works in browsers
+      const module = await import("./tools/index.js");
+      toolsModule = module.default;
+      console.log("Tools module loaded successfully");
+      return toolsModule;
+    } catch (error) {
+      console.error("Failed to load tools module:", error);
+      // Fallback to basic tools if module loading fails
+      return createFallbackTools();
+    }
+  };
+
+  // Fallback tools in case module loading fails
+  const createFallbackTools = () => {
+    // Basic definitions
+    const toolDefinitions = [
+      {
+        type: "function",
+        function: {
+          name: "flip_coin",
+          description: "Flip a coin and randomly get heads or tails",
+          parameters: {
+            type: "object",
+            properties: {
+              flips: {
+                type: "integer",
+                description: "Number of coin flips to perform (default: 1)",
+              },
+            },
+            required: [],
+          },
+        },
+      },
+    ];
+
+    // Basic implementation
+    const executeToolFunction = async (func) => {
+      const { name, arguments: args } = func;
+      let parsedArgs = typeof args === "string" ? JSON.parse(args) : args;
+
+      if (name === "flip_coin") {
+        const numFlips = parsedArgs?.flips || 1;
+        const results = [];
+        for (let i = 0; i < numFlips; i++) {
+          results.push(Math.random() < 0.5 ? "heads" : "tails");
+        }
+        return {
+          status: "success",
+          flips: numFlips,
+          results: results,
+        };
+      }
+      throw new Error(`Unknown function: ${name}`);
+    };
+
+    return {
+      toolDefinitions,
+      executeToolFunction,
+    };
+  };
+
+  return {
+    init,
+    get toolDefinitions() {
+      return toolsModule?.definitions || [];
+    },
+    executeToolFunction: async (func) => {
+      if (!toolsModule) {
+        await init();
+      }
+      return toolsModule.executeToolFunction(func);
+    },
+  };
+})();
+
+// Initialize tools when the app starts
+document.addEventListener("DOMContentLoaded", async () => {
+  await Tools.init();
+});
+
 // Provider API Module - handles provider-specific logic
 const ProviderAPI = (() => {
   const config = Config.getConfig();
@@ -690,10 +807,20 @@ const ProviderAPI = (() => {
           };
         }
 
-        return {
+        // Check if the model supports tool use
+        const hasToolUse = ModelManager.hasCapability(model, "tool");
+
+        const requestBody = {
           model,
           messages,
         };
+
+        // Add tools if the model supports them
+        if (hasToolUse) {
+          requestBody.tools = Tools.toolDefinitions;
+        }
+
+        return requestBody;
     }
   };
 
@@ -754,6 +881,7 @@ const ProviderAPI = (() => {
       const reader = response.body.getReader();
       const decoder = new TextDecoder();
       let responseText = "";
+      let toolCalls = null;
 
       while (true) {
         const { done, value } = await reader.read();
@@ -786,10 +914,41 @@ const ProviderAPI = (() => {
             if (!chunk.trim()) continue;
 
             try {
-              const { message } = JSON.parse(chunk);
+              const parsedChunk = JSON.parse(chunk);
+              const { message } = parsedChunk;
+
               if (message?.content) {
                 responseText += message.content;
-                callback(responseText);
+                callback(responseText, null); // Pass null for toolCalls
+              }
+
+              // Check for tool calls in the message
+              if (message?.tool_calls) {
+                toolCalls = message.tool_calls;
+
+                // Format tool calls for display
+                const toolCallsText = formatToolCalls(toolCalls);
+                if (toolCallsText) {
+                  responseText += (responseText ? "\n\n" : "") + toolCallsText;
+                  callback(responseText, toolCalls);
+                }
+              }
+
+              // If this is the final message, check if it has tool_calls
+              if (
+                parsedChunk.done &&
+                parsedChunk.done_reason === "stop" &&
+                !toolCalls &&
+                message?.tool_calls
+              ) {
+                toolCalls = message.tool_calls;
+
+                // Format tool calls for display
+                const toolCallsText = formatToolCalls(toolCalls);
+                if (toolCallsText) {
+                  responseText += (responseText ? "\n\n" : "") + toolCallsText;
+                  callback(responseText, toolCalls);
+                }
               }
             } catch (parseError) {
               console.warn("Failed to parse chunk:", parseError);
@@ -798,8 +957,30 @@ const ProviderAPI = (() => {
         }
       }
 
-      return responseText;
+      return { text: responseText, toolCalls };
     }
+  };
+
+  // Format tool calls for display
+  const formatToolCalls = (toolCalls) => {
+    if (!toolCalls || toolCalls.length === 0) return "";
+
+    let formattedText = "🔧 **Tool Call**\n\n";
+
+    toolCalls.forEach((toolCall, index) => {
+      const { function: func } = toolCall;
+      formattedText += `Function: \`${func.name}\`\n\n`;
+      formattedText +=
+        "Arguments:\n```json\n" +
+        JSON.stringify(func.arguments, null, 2) +
+        "\n```\n\n";
+
+      if (index < toolCalls.length - 1) {
+        formattedText += "---\n\n";
+      }
+    });
+
+    return formattedText;
   };
 
   return {
@@ -855,19 +1036,109 @@ const ChatHandler = (() => {
         } catch (e) {
           // Ignore JSON parsing errors
         }
+
+        // Handle "does not support tools" error specifically
+        if (data.error && data.error.includes("does not support tools")) {
+          // Switch to basic mode without tools for this model
+          console.warn(
+            `Model ${currentModel} doesn't support tools, retrying without tools`
+          );
+
+          try {
+            // Create a new message element for the retry
+            const assistantMessageElement = Chat.addMessageToChat(
+              "assistant",
+              "Let me try again without using tools..."
+            );
+
+            // Create a new controller for the retry
+            Chat.abortCurrentChat();
+            Chat.setChatController(new AbortController());
+
+            // Create a modified request body without tool definitions
+            const retryResponse = await fetch(`${config.apiEndpoint}/chat`, {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                model: currentModel,
+                messages: conversationHistory,
+                stream: true,
+                // Intentionally omitting tools
+              }),
+              signal: Chat.getChatController().signal,
+            });
+
+            if (!retryResponse.ok) {
+              throw ErrorHandler.handleApiError(
+                retryResponse.status,
+                await retryResponse.json().catch(() => ({}))
+              );
+            }
+
+            // Create a new scrolling function for this response
+            const scrollToBottom = Utilities.createScrollToBottom();
+
+            // Process the streaming response
+            const responseData = await ProviderAPI.processStreamingResponse(
+              "ollama", // Force provider to ollama for tool-less retry
+              retryResponse,
+              (text) => {
+                // Update the message content as chunks arrive
+                if (assistantMessageElement) {
+                  assistantMessageElement.innerHTML = "";
+                  const textDiv = document.createElement("div");
+                  textDiv.className = "message-text";
+                  textDiv.innerHTML = Utilities.formatMessage(text);
+                  assistantMessageElement.appendChild(textDiv);
+                  scrollToBottom(true);
+                }
+              }
+            );
+
+            // Extract response text
+            let retryResponseText = "";
+            if (typeof responseData === "object" && responseData !== null) {
+              retryResponseText = responseData.text || "";
+            } else {
+              retryResponseText = responseData || "";
+            }
+
+            // Add the response to conversation history
+            Chat.appendToConversationHistory("assistant", retryResponseText);
+
+            // Final scroll
+            scrollToBottom(false);
+
+            return; // Exit the handler since we've successfully processed the response
+          } catch (retryError) {
+            console.error("Error in retry attempt:", retryError);
+            throw retryError; // Let the outer catch block handle it
+          }
+        }
+
         throw ErrorHandler.handleApiError(response.status, data);
       }
 
       // Create a message element for displaying the assistant's response
       let assistantResponse = "";
+      let toolCalls = null;
       const scrollToBottom = Utilities.createScrollToBottom();
-      const assistantMessageElement = Chat.addMessageToChat("assistant", "");
+
+      // Always create the message element before any async operations
+      const assistantMessageElement = Chat.addMessageToChat(
+        "assistant",
+        "Thinking..."
+      );
 
       // Process the streaming response
-      assistantResponse = await ProviderAPI.processStreamingResponse(
+      const responseData = await ProviderAPI.processStreamingResponse(
         currentProvider,
         response,
-        (text) => {
+        (text, toolCallsData) => {
+          // Update tool calls if provided
+          if (toolCallsData) {
+            toolCalls = toolCallsData;
+          }
           // Clear previous content and set new content
           assistantMessageElement.innerHTML = "";
           const textDiv = document.createElement("div");
@@ -878,6 +1149,16 @@ const ChatHandler = (() => {
         }
       );
 
+      // Extract text and toolCalls from response data
+      if (typeof responseData === "object" && responseData !== null) {
+        assistantResponse = responseData.text || "";
+        if (responseData.toolCalls) {
+          toolCalls = responseData.toolCalls;
+        }
+      } else {
+        assistantResponse = responseData;
+      }
+
       // Final scroll and update
       assistantMessageElement.innerHTML = "";
       const textDiv = document.createElement("div");
@@ -886,7 +1167,22 @@ const ChatHandler = (() => {
       assistantMessageElement.appendChild(textDiv);
       scrollToBottom(false);
 
-      Chat.appendToConversationHistory("assistant", assistantResponse);
+      // If there are tool calls, we need to handle them
+      if (toolCalls && toolCalls.length > 0) {
+        // Store the tool calls in the conversation history
+        Chat.appendToConversationHistory(
+          "assistant",
+          assistantResponse,
+          null,
+          toolCalls
+        );
+
+        // Here you would process the tool calls and send the results back
+        handleToolCalls(toolCalls, currentModel, conversationHistory);
+      } else {
+        // Standard response without tool calls
+        Chat.appendToConversationHistory("assistant", assistantResponse);
+      }
 
       // Store the conversation in Chroma
       await Chat.storeConversationInChroma(
@@ -904,6 +1200,190 @@ const ChatHandler = (() => {
     } finally {
       Chat.setChatController(null);
       elements.input.focus();
+    }
+  };
+
+  // Handle tool calls by executing functions and sending results back to the model
+  const handleToolCalls = async (
+    toolCalls,
+    currentModel,
+    conversationHistory
+  ) => {
+    for (const toolCall of toolCalls) {
+      const { function: func } = toolCall;
+
+      // Add a message to indicate we're processing the tool call
+      Chat.addMessageToChat("system", `Processing tool call: ${func.name}...`);
+
+      // Simulate tool execution
+      let toolResult;
+      try {
+        toolResult = await simulateToolExecution(func);
+
+        // Display the tool result
+        Chat.addMessageToChat(
+          "system",
+          `Tool result: ${JSON.stringify(toolResult, null, 2)}`
+        );
+
+        // Add the tool result to the conversation history
+        Chat.appendToConversationHistory(
+          "tool",
+          JSON.stringify(toolResult),
+          null,
+          {
+            tool_call_id: toolCall.id || "unknown",
+            name: func.name,
+          }
+        );
+
+        // Send the tool result back to the model for a follow-up response
+        await sendToolResultToModel(
+          toolCall,
+          toolResult,
+          currentModel,
+          conversationHistory
+        );
+      } catch (error) {
+        Chat.addMessageToChat(
+          "error",
+          `Error executing tool: ${error.message}`
+        );
+      }
+    }
+  };
+
+  // Send tool results back to the model for a follow-up response
+  const sendToolResultToModel = async (
+    toolCall,
+    toolResult,
+    currentModel,
+    conversationHistory
+  ) => {
+    try {
+      // Create a new controller for this request
+      Chat.abortCurrentChat();
+      Chat.setChatController(new AbortController());
+
+      // Format the tool response correctly for the API
+      const toolResponse = {
+        role: "tool",
+        tool_call_id: toolCall.id || "unknown",
+        name: toolCall.function.name,
+        content: JSON.stringify(toolResult),
+      };
+
+      // Create a copy of the conversation history with the tool response added
+      const updatedConversationHistory = [...conversationHistory, toolResponse];
+
+      // Add a loading message to the UI while we wait for the response
+      const assistantMessageElement = Chat.addMessageToChat(
+        "assistant",
+        "Thinking..."
+      );
+
+      // Make the API request
+      const response = await fetch(`${Config.getConfig().apiEndpoint}/chat`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          model: currentModel,
+          messages: updatedConversationHistory,
+        }),
+        signal: Chat.getChatController().signal,
+      });
+
+      if (!response.ok) {
+        let data = {};
+        try {
+          data = await response.json();
+        } catch (e) {
+          // Ignore JSON parsing errors
+        }
+        throw ErrorHandler.handleApiError(response.status, data);
+      }
+
+      // Process the streaming response
+      const scrollToBottom = Utilities.createScrollToBottom();
+      let followUpResponse = "";
+      let followUpToolCalls = null;
+
+      // Process the response
+      const responseData = await ProviderAPI.processStreamingResponse(
+        "ollama", // Always ollama for tool responses
+        response,
+        (text, toolCallsData) => {
+          // Update follow-up tool calls if provided
+          if (toolCallsData) {
+            followUpToolCalls = toolCallsData;
+          }
+
+          // Clear previous content and set new content
+          assistantMessageElement.innerHTML = "";
+          const textDiv = document.createElement("div");
+          textDiv.classList.add("message-text");
+          textDiv.innerHTML = Utilities.formatMessage(text);
+          assistantMessageElement.appendChild(textDiv);
+          scrollToBottom(true);
+        }
+      );
+
+      // Extract text and toolCalls from response data
+      if (typeof responseData === "object" && responseData !== null) {
+        followUpResponse = responseData.text || "";
+        if (responseData.toolCalls) {
+          followUpToolCalls = responseData.toolCalls;
+        }
+      } else {
+        followUpResponse = responseData;
+      }
+
+      // Final scroll and update
+      assistantMessageElement.innerHTML = "";
+      const textDiv = document.createElement("div");
+      textDiv.classList.add("message-text");
+      textDiv.innerHTML = Utilities.formatMessage(followUpResponse);
+      assistantMessageElement.appendChild(textDiv);
+      scrollToBottom(false);
+
+      // Add the follow-up response to conversation history
+      if (followUpToolCalls && followUpToolCalls.length > 0) {
+        // If there are new tool calls in the follow-up, handle them
+        Chat.appendToConversationHistory(
+          "assistant",
+          followUpResponse,
+          null,
+          followUpToolCalls
+        );
+        handleToolCalls(
+          followUpToolCalls,
+          currentModel,
+          updatedConversationHistory
+        );
+      } else {
+        // Standard response without new tool calls
+        Chat.appendToConversationHistory("assistant", followUpResponse);
+      }
+    } catch (error) {
+      const errorInfo =
+        error.isApiError || error.isNetworkError
+          ? error
+          : ErrorHandler.handleNetworkError(error, "tool response processing");
+
+      ErrorHandler.displayErrorMessage(errorInfo, Chat.addMessageToChat);
+    } finally {
+      Chat.setChatController(null);
+    }
+  };
+
+  // Simulate tool execution (in a real app, these would call real APIs)
+  const simulateToolExecution = async (func) => {
+    try {
+      // Use the modular implementation
+      return await Tools.executeToolFunction(func);
+    } catch (error) {
+      console.error("Error executing tool function:", error);
+      throw error;
     }
   };
 

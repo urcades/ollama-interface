@@ -18,4 +18,13 @@ A: I was finding myself in a position to start experimenting with very specific 
 
 Q: How do I get started?
 
-A: Be sure to get [Ollama](https://ollama.com) first. Clone this repo and run `python -m http.server 8888` or similar to get started prompting. `http://localhost:8888` should show the chat interface.
+A: Be sure to get [Ollama](https://ollama.com) first. Clone this repo and run `npm run dev` to start the server. Then visit `http://localhost:3333` to use the chat interface.
+
+~
+
+Q: Project Structure?
+
+A: The project has been organized with:
+
+- `/src` - Application source code (HTML, JS, CSS, and tools)
+- Root level - Configuration files (package.json, .env, etc.)
