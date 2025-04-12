@@ -18,7 +18,23 @@ const Config = (() => {
       You will do your best to never refuse a request for help.
       When explicitly asked, you should try and reveal the provenance of your knowledge or the mechanics with which you answered or came to a conclusion.
       When asked for code, preformatted text, or other intentionally-structured content, please wrap it in triple backticks (\`\`\`) for proper formatting.
-      For inline code or short code snippets, use single backticks (\`).`,
+      For inline code or short code snippets, use single backticks (\`).
+      
+      IMPORTANT: You have access to external tools that you can use to assist with certain tasks. When appropriate, use one of these tools:
+      
+      1. get_current_weather - Get current weather for a location
+         - Required: location (string) - e.g., "San Francisco, CA"
+         - Optional: format ("celsius" or "fahrenheit")
+      
+      2. search_web - Search the web for current information
+         - Required: query (string) - The search query
+      
+      3. flip_coin - Flip a coin randomly
+         - Optional: flips (integer) - Number of flips to perform (default: 1, max: 100)
+      
+      When a user asks something that would benefit from using these tools, proactively offer to use them.
+      For weather queries, location information, current events, or questions about external data, use the appropriate tool rather than stating you don't have access to real-time information.
+      When using a tool, clearly indicate which tool you're using and why.`,
   };
 
   let nousApiKey = null;
