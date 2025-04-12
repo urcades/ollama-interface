@@ -6,7 +6,10 @@ This directory contains modular definitions and implementations of tools (functi
 
 - `index.js` - Main export file that combines and exports all tools
 - `definitions.js` - Contains tool definitions (JSON schema) for each tool
-- `implementations.js` - Contains the actual implementations of each tool function
+- `implementations.js` - Imports individual tool implementations and provides the executor function
+- `weather.js` - Implementation of the weather tool
+- `search.js` - Implementation of the web search tool
+- `coin.js` - Implementation of the coin flip tool
 
 ## How to Use
 
@@ -58,10 +61,14 @@ export const allTools = [
 ];
 ```
 
-2. Add the tool implementation to `implementations.js`:
+2. Create a new file for your tool implementation (e.g., `mynewtool.js`):
 
 ```javascript
-const myNewFunction = async (args) => {
+/**
+ * My new tool implementation
+ */
+
+export const myNewFunction = async (args) => {
   // Implementation goes here
   return {
     status: "success",
@@ -69,17 +76,41 @@ const myNewFunction = async (args) => {
   };
 };
 
+export default myNewFunction;
+```
+
+3. Update `implementations.js` to import and register your new tool:
+
+```javascript
+// In implementations.js
+import myNewFunction from "./mynewtool.js";
+
+// Add to exports
+export { myNewFunction };
+
 // Add to the implementations map
 const toolImplementations = {
   // ...existing implementations,
   my_new_function: myNewFunction,
 };
-
-// Add to exports
-export { myNewFunction };
 ```
 
-3. The tool will automatically be available through the `executeToolFunction` without any changes needed to that function.
+4. The tool will automatically be available through the `executeToolFunction` without any changes needed to that function.
+
+5. Update the exports in `index.js` if needed:
+
+```javascript
+// In index.js
+export const { /* ...existing tools... */, myNewTool } = definitions;
+export const { /* ...existing implementations... */, myNewFunction } = implementations;
+
+// Update the default export if needed
+export default {
+  // ...
+  myNewTool,
+  myNewFunction,
+};
+```
 
 ## Available Tools
 
