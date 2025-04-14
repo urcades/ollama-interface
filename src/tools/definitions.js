@@ -1,5 +1,6 @@
 /**
- * Tool definitions for Ollama models that support tool use/function calling
+ * Tool definitions for models that support tool use/function calling
+ * Compatible with Ollama, OpenAI, and Claude APIs
  */
 
 // Weather tool definition

@@ -12,6 +12,12 @@ export const fetchApiKeys = async () => {
       if (data.cerebrasApiKey) {
         Config.setCerebrasCredentials(data.cerebrasApiKey, data.cerebrasOrgId);
       }
+      if (data.openaiApiKey) {
+        Config.setOpenaiApiKey(data.openaiApiKey);
+      }
+      if (data.anthropicApiKey) {
+        Config.setAnthropicApiKey(data.anthropicApiKey);
+      }
     }
   } catch (error) {
     console.error("Failed to fetch API keys:", error);

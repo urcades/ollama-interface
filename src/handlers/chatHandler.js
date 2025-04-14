@@ -32,6 +32,14 @@ export const handleSubmit = async (e) => {
   try {
     const currentProvider = ModelManager.getCurrentProvider();
     const currentModel = ModelManager.getCurrentModel();
+
+    // Ensure system prompt is up to date before sending the request
+    Chat.updateSystemPrompt();
+    console.log(
+      "Updated system prompt:",
+      Config.getSystemPrompt().substring(0, 50) + "..."
+    );
+
     const conversationHistory = Chat.getConversationHistory();
 
     // Make API request using the provider API with image data if available
@@ -53,7 +61,19 @@ export const handleSubmit = async (e) => {
       }
 
       // Handle "does not support tools" error specifically
-      if (data.error && data.error.includes("does not support tools")) {
+      if (
+        (typeof data === "object" &&
+          data !== null &&
+          data.error &&
+          typeof data.error === "string" &&
+          data.error.includes("does not support tools")) ||
+        // Handle case where the error may be nested differently
+        (typeof data === "object" &&
+          data !== null &&
+          data.details &&
+          typeof data.details === "string" &&
+          data.details.includes("does not support tools"))
+      ) {
         // Switch to basic mode without tools for this model
         console.warn(
           `Model ${currentModel} doesn't support tools, retrying without tools`

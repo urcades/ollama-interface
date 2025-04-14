@@ -63,6 +63,11 @@ export const validateAndSetModel = (model, provider) => {
 
 export const fetchModelMetadata = async (modelName) => {
   try {
+    // Only fetch metadata for Ollama models
+    if (modelName.includes("gpt") || modelName.includes("claude")) {
+      return null;
+    }
+
     const response = await fetch(`${config.apiEndpoint}/show`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -81,6 +86,39 @@ export const fetchModelMetadata = async (modelName) => {
 };
 
 export const hasCapability = (modelName, capability) => {
+  // Provider-specific capabilities for models that don't have metadata
+  if (modelName === "gpt-4o" || modelName === "gpt-4-vision-preview") {
+    // OpenAI capabilities
+    switch (capability.toLowerCase()) {
+      case "vision":
+        return true;
+      case "tool":
+      case "tools":
+      case "tool use":
+        return true;
+      default:
+        return false;
+    }
+  } else if (
+    modelName.includes("claude-3-opus") ||
+    modelName.includes("claude-3-sonnet") ||
+    modelName.includes("claude-3-haiku") ||
+    modelName.includes("claude-3-5-sonnet")
+  ) {
+    // Anthropic capabilities
+    switch (capability.toLowerCase()) {
+      case "vision":
+        return true;
+      case "tool":
+      case "tools":
+      case "tool use":
+        return true;
+      default:
+        return false;
+    }
+  }
+
+  // For Ollama models with metadata
   if (!modelMetadata[modelName]) return false;
 
   const metadata = modelMetadata[modelName];
@@ -150,9 +188,34 @@ export const fetchAvailableModels = async () => {
       console.warn("Error fetching Ollama models:", ollamaError);
     }
 
-    // Combine Ollama models with other providers' models
+    // Define standard capabilities for OpenAI and Anthropic models
+    const openaiModels = config.availableModels
+      .filter((m) => m.provider === "openai")
+      .map((model) => {
+        const isVisionCapable =
+          model.name.includes("gpt-4") || model.name.includes("gpt-4o");
+        return {
+          ...model,
+          hasVision: isVisionCapable,
+          hasToolUse: true,
+        };
+      });
+
+    const anthropicModels = config.availableModels
+      .filter((m) => m.provider === "anthropic")
+      .map((model) => {
+        return {
+          ...model,
+          hasVision: model.name.includes("claude-3"),
+          hasToolUse: model.name.includes("claude-3"),
+        };
+      });
+
+    // Combine all models
     availableModels = [
       ...ollamaModels,
+      ...openaiModels,
+      ...anthropicModels,
       ...config.availableModels.filter(
         (m) => m.provider === "nous" || m.provider === "cerebras"
       ),

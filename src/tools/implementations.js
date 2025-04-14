@@ -1,5 +1,6 @@
 /**
- * Tool implementations for Ollama models that support tool use/function calling
+ * Tool implementations for models that support tool use/function calling
+ * Compatible with Ollama, OpenAI, and Claude APIs
  * This file imports individual tool implementations and combines them
  */
 

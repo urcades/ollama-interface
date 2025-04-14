@@ -21,7 +21,9 @@ export { executeToolFunction };
  */
 export const generateToolDescriptions = () => {
   let toolDescriptions =
-    "IMPORTANT: You have access to external tools that you can use to assist with certain tasks. When appropriate, use one of these tools:\n\n";
+    "IMPORTANT: You have access to external tools that you can use to assist with certain tasks. " +
+    "You MUST use these tools when appropriate instead of saying you don't have access to real-time data. " +
+    "Here are the tools available to you:\n\n";
 
   // Add each tool's description
   allDefinitions.forEach((tool, index) => {
@@ -64,11 +66,18 @@ export const generateToolDescriptions = () => {
     }
   });
 
-  // Add guidance for tool usage
+  // Add guidance for tool usage with improved clarity and emphasis
   toolDescriptions += `
-When a user asks something that would benefit from using these tools, proactively offer to use them.
-For weather queries, location information, current events, or questions about external data, use the appropriate tool rather than stating you don't have access to real-time information.
-When using a tool, clearly indicate which tool you're using and why.`;
+REMEMBER: When a user asks something that requires real-time information, external data, or specialized functions, you MUST use these tools.
+
+Specific scenarios where you MUST use tools:
+- Weather inquiries → use get_current_weather
+- Current events or factual questions about recent events → use search_web
+- Requests for randomization → use flip_coin
+
+DO NOT say you don't have real-time information or can't access current data. Instead, PROACTIVELY offer to use the tools to get the information.
+
+When using a tool, clearly indicate which tool you're using. Always format your function calls correctly according to the schema provided.`;
 
   return toolDescriptions;
 };
