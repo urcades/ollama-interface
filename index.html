@@ -12,17 +12,44 @@
     <style>
       /* CSS Custom Properties */
       :root {
+        /* Colors */
         --bg-color-light: #fff;
         --wash-color-light: #ededed;
         --text-color-light: #1a1818;
         --bg-color-dark: #1a1818;
         --wash-color-dark: #2d2d2d;
         --text-color-dark: #fff;
+        --param-color-light: #888;
+        --param-color-dark: #aaa;
+
+        /* Typography */
         --font-family: serif;
+        --font-size-base: 1em;
+        --font-size-code: 1em;
+        --font-size-icon: 1.5em;
+        --font-size-params: 0.75em;
+
+        /* Dimensions */
+        --element-height: 3em;
         --border-radius: 1.11em;
+        --border-radius-small: calc(var(--border-radius) / 2);
+
+        /* Spacing */
+        --spacing-xs: 0.2em;
         --spacing-sm: 0.5em;
         --spacing-md: 0.88em;
         --spacing-lg: 1em;
+        --form-gap: 0.44em;
+
+        /* Effects */
+        --transition-speed: 0.2s;
+        --overlay-bg: rgba(0, 0, 0, 0.5);
+        --overlay-bg-darker: rgba(0, 0, 0, 0.7);
+        --highlight-color: #4caf50;
+        --code-padding: 0.2em 0.4em;
+
+        /* Z-index layers */
+        --z-overlay: 2;
       }
 
       /* Base Reset */
@@ -90,11 +117,27 @@
         margin: var(--spacing-lg) 0;
       }
 
+      /* LLM Parameters */
+      .llm-parameters-container {
+        margin-top: var(--spacing-sm);
+      }
+
+      .llm-parameters {
+        font-family: monospace;
+        font-size: var(--font-size-params);
+        color: var(--param-color-light);
+        text-align: left;
+        padding: var(--spacing-xs);
+        border-top: 1px solid var(--wash-color-light);
+      }
+
       /* Form Elements */
       form {
         display: flex;
-        gap: 0.44em;
+        gap: var(--form-gap);
         max-width: 100%;
+        align-items: center;
+        height: var(--element-height);
       }
 
       /* Common styles for interactive elements */
@@ -104,10 +147,11 @@
         border: none;
         outline: none;
         font-family: var(--font-family);
-        font-size: 1em;
+        font-size: var(--font-size-base);
         background-color: var(--wash-color-light);
         border-radius: var(--border-radius);
-        transition: opacity 0.2s ease;
+        transition: opacity var(--transition-speed) ease;
+        height: var(--element-height);
       }
 
       #prompt-input {
@@ -134,9 +178,61 @@
         contain: content;
       }
 
+      #upload-button {
+        white-space: nowrap;
+      }
+
       button:hover,
       select:hover {
         opacity: 0.8;
+      }
+
+      /* Image handling */
+      #image-input {
+        display: none;
+        position: absolute;
+        visibility: hidden;
+      }
+
+      #image-preview-container {
+        display: none;
+        position: relative;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        overflow: hidden;
+        width: var(--element-height);
+        min-width: var(--element-height);
+        max-width: var(--element-height);
+        max-height: var(--element-height);
+        flex: 0 0 var(--element-height);
+        background-color: var(--wash-color-light);
+        border-radius: var(--border-radius);
+        transition: opacity var(--transition-speed) ease;
+        height: var(--element-height);
+      }
+
+      #image-preview-container:hover::after {
+        content: "×";
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background-color: var(--overlay-bg);
+        color: var(--text-color-dark);
+        font-size: var(--font-size-icon);
+        z-index: var(--z-overlay);
+      }
+
+      #image-preview {
+        width: 100%;
+        height: 100%;
+        border-radius: var(--border-radius);
+        object-fit: cover;
       }
 
       /* Code Formatting */
@@ -151,7 +247,7 @@
 
       code {
         font-family: monospace;
-        font-size: 1em;
+        font-size: var(--font-size-code);
       }
 
       pre code {
@@ -160,8 +256,8 @@
 
       :not(pre) > code {
         background-color: var(--wash-color-light);
-        padding: 0.2em 0.4em;
-        border-radius: 3px;
+        padding: var(--code-padding);
+        border-radius: var(--border-radius-small);
       }
 
       /* Mobile Layout */
@@ -197,10 +293,16 @@
         #prompt-input,
         select,
         button,
+        #image-preview-container,
         pre,
         :not(pre) > code {
           background-color: var(--wash-color-dark);
           color: var(--text-color-dark);
+        }
+
+        .llm-parameters {
+          color: var(--param-color-dark);
+          border-top-color: var(--wash-color-dark);
         }
 
         pre {
@@ -222,6 +324,30 @@
     <div id="input-container">
       <form id="prompt-form">
         <input
+          type="file"
+          id="image-input"
+          accept="image/jpeg, image/png, image/gif, image/webp"
+          style="
+            position: absolute;
+            width: 1px;
+            height: 1px;
+            opacity: 0;
+            z-index: -1;
+            overflow: hidden;
+          "
+        />
+        <button
+          type="button"
+          id="upload-button"
+          class="button-like"
+          title="Upload Image"
+        >
+          Hold Image
+        </button>
+        <div id="image-preview-container">
+          <img id="image-preview" src="#" alt="Image preview" />
+        </div>
+        <input
           type="text"
           id="prompt-input"
           placeholder="Send a message to deepseek-r1:8b"
@@ -233,282 +359,6 @@
         <button type="submit">Send</button>
       </form>
     </div>
+    <script src="app.js"></script>
   </body>
-  <script>
-    // Constants and configuration
-    const CONFIG = {
-      aiName: "Oh",
-      userName: "Edouard",
-      defaultModel: "deepseek-r1:8b",
-      apiEndpoint: "http://localhost:11434/api",
-      nousApiEndpoint: "https://inference-api.nousresearch.com/v1",
-      nousApiKey: "sk-um2_7wIc68ED2QxJwPi7TQ",
-      availableModels: [
-        { name: "deepseek-r1:8b", provider: "ollama" },
-        { name: "Hermes-3-Llama-3.1-70B", provider: "nous" },
-      ],
-      nousSystemPrompt:
-        "You are a helpful AI assistant named Oh. Be concise and direct in your responses. Format code with triple backticks.",
-    };
-
-    // DOM elements cache
-    const DOM = {
-      form: document.getElementById("prompt-form"),
-      input: document.getElementById("prompt-input"),
-      chat: document.getElementById("chat-container"),
-      modelSelector: document.getElementById("model-selector"),
-    };
-
-    // State management
-    let currentModel = CONFIG.defaultModel;
-    let currentProvider = "ollama";
-    let currentChatController = null;
-    let conversationHistory = [
-      {
-        role: "system",
-        content: `Your name is Oh.
-        You will respond in a moderately friendly and straightforward manner.
-        Your primary goal is to act as a helpful entity, providing information and answering questions to the best of your ability.
-        You will do your best to never refuse a request for help.
-        When explicitly asked, you should try and reveal the provenance of your knowledge or the mechanics with which you answered or came to a conclusion.
-        When asked for code, preformatted text, or other intentionally-structured content, please wrap it in triple backticks (\`\`\`) for proper formatting.
-        For inline code or short code snippets, use single backticks (\`).`,
-      },
-    ];
-
-    // Utility functions
-    const escapeHtml = (unsafe) =>
-      unsafe
-        .replace(/&/g, "&amp;")
-        .replace(/</g, "&lt;")
-        .replace(/>/g, "&gt;")
-        .replace(/"/g, "&quot;")
-        .replace(/'/g, "&#039;");
-
-    const formatMessage = (content) => {
-      if (!content) return "";
-      return content
-        .replace(/<think>([\s\S]*?)<\/think>/g, '<p class="think">$1</p>')
-        .replace(
-          /```(\w*)\n([\s\S]*?)```/g,
-          (_, lang, code) =>
-            `<pre><code class="language-${lang}">${escapeHtml(
-              code.trim()
-            )}</code></pre>`
-        )
-        .replace(
-          /`([^`\n]+)`/g,
-          (_, code) => `<code>${escapeHtml(code)}</code>`
-        );
-    };
-
-    // Scroll optimization with requestAnimationFrame
-    const scrollToBottom = (() => {
-      let rafId;
-      let isStreaming = false;
-
-      const scroll = () => {
-        DOM.chat.scrollTop = DOM.chat.scrollHeight;
-      };
-
-      return (streaming = false) => {
-        isStreaming = streaming;
-        if (isStreaming) {
-          scroll();
-        } else {
-          cancelAnimationFrame(rafId);
-          rafId = requestAnimationFrame(scroll);
-        }
-      };
-    })();
-
-    // Model management
-    const updatePlaceholder = () => {
-      DOM.input.placeholder = `Send a message to ${currentModel}`;
-    };
-
-    const fetchAvailableModels = async () => {
-      try {
-        // For Ollama models
-        const response = await fetch(`${CONFIG.apiEndpoint}/tags`);
-        if (!response.ok)
-          throw new Error(`HTTP error! status: ${response.status}`);
-
-        const { models } = await response.json();
-        const ollamaModels = models.map((model) => ({
-          name: model.name,
-          provider: "ollama",
-        }));
-
-        // Combine Ollama models with Nous Research models
-        const allModels = [
-          ...ollamaModels,
-          ...CONFIG.availableModels.filter((m) => m.provider === "nous"),
-        ];
-
-        const modelOptions = allModels
-          .map(
-            (model) =>
-              `<option value="${model.name}" data-provider="${model.provider}">${model.name} (${model.provider})</option>`
-          )
-          .join("");
-
-        DOM.modelSelector.innerHTML = modelOptions;
-
-        // Set initial model
-        const initialModel =
-          allModels.find((model) => model.name === currentModel) ||
-          allModels[0];
-        currentModel = initialModel.name;
-        currentProvider = initialModel.provider;
-        DOM.modelSelector.value = currentModel;
-        updatePlaceholder();
-      } catch (error) {
-        console.error("Error fetching models:", error);
-        DOM.modelSelector.innerHTML = `<option value="${CONFIG.defaultModel}">${CONFIG.defaultModel} (ollama)</option>`;
-      }
-    };
-
-    // Chat functionality
-    const addMessageToChat = (role, content) => {
-      const messageDiv = document.createElement("div");
-      messageDiv.classList.add("message", `${role}-message`);
-      messageDiv.innerHTML = formatMessage(content);
-      DOM.chat.appendChild(messageDiv);
-      scrollToBottom();
-      return messageDiv;
-    };
-
-    const handleSubmit = async (e) => {
-      e.preventDefault();
-      const prompt = DOM.input.value.trim();
-      if (!prompt) return;
-
-      if (currentChatController) {
-        currentChatController.abort();
-      }
-      currentChatController = new AbortController();
-
-      addMessageToChat("user", prompt);
-      conversationHistory.push({ role: "user", content: prompt });
-      DOM.input.value = "";
-
-      try {
-        let response;
-        if (currentProvider === "nous") {
-          // Nous Research API call - following OpenAI chat format
-          response = await fetch(`${CONFIG.nousApiEndpoint}/chat/completions`, {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-              Authorization: `Bearer ${CONFIG.nousApiKey}`,
-            },
-            body: JSON.stringify({
-              model: currentModel,
-              messages: [
-                {
-                  role: "system",
-                  content: CONFIG.nousSystemPrompt,
-                },
-                {
-                  role: "user",
-                  content: prompt,
-                },
-              ],
-              temperature: 0.7,
-              max_tokens: 1000,
-            }),
-            signal: currentChatController.signal,
-          });
-        } else {
-          // Ollama API call
-          response = await fetch(`${CONFIG.apiEndpoint}/chat`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              model: currentModel,
-              messages: conversationHistory,
-            }),
-            signal: currentChatController.signal,
-          });
-        }
-
-        if (!response.ok)
-          throw new Error(`HTTP error! status: ${response.status}`);
-
-        let assistantResponse = "";
-        const assistantMessageElement = addMessageToChat("assistant", "");
-
-        if (currentProvider === "nous") {
-          const data = await response.json();
-          assistantResponse = data.choices[0].message.content;
-          assistantMessageElement.innerHTML = formatMessage(assistantResponse);
-          scrollToBottom(false);
-        } else {
-          const reader = response.body.getReader();
-          while (true) {
-            const { done, value } = await reader.read();
-            if (done) break;
-
-            const chunks = new TextDecoder().decode(value).split("\n");
-            for (const chunk of chunks) {
-              if (!chunk.trim()) continue;
-
-              try {
-                const { message } = JSON.parse(chunk);
-                if (message?.content) {
-                  assistantResponse += message.content;
-                  assistantMessageElement.innerHTML =
-                    formatMessage(assistantResponse);
-                  scrollToBottom(true);
-                }
-              } catch (parseError) {
-                console.warn("Failed to parse chunk:", parseError);
-              }
-            }
-          }
-          scrollToBottom(false);
-        }
-
-        conversationHistory.push({
-          role: "assistant",
-          content: assistantResponse,
-        });
-      } catch (error) {
-        if (error.name === "AbortError") {
-          console.log("Request cancelled");
-          return;
-        }
-        console.error("Error:", error);
-        addMessageToChat(
-          "error",
-          `An error occurred: ${error.message}<br>Make sure the API service is running and accessible`
-        );
-      } finally {
-        currentChatController = null;
-        DOM.input.focus();
-      }
-    };
-
-    // Event Listeners
-    DOM.form.addEventListener("submit", handleSubmit);
-    DOM.input.addEventListener("keydown", (e) => {
-      if (e.key === "Enter" && !e.shiftKey) {
-        e.preventDefault();
-        handleSubmit(e);
-      }
-    });
-    DOM.modelSelector.addEventListener("change", (e) => {
-      const selectedOption = e.target.options[e.target.selectedIndex];
-      currentModel = e.target.value;
-      currentProvider = selectedOption.dataset.provider;
-      updatePlaceholder();
-    });
-
-    // Initialize
-    window.addEventListener("load", () => {
-      DOM.input.focus();
-      fetchAvailableModels();
-    });
-  </script>
 </html>
