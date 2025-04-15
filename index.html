@@ -21,6 +21,9 @@
         --text-color-dark: #fff;
         --param-color-light: #888;
         --param-color-dark: #aaa;
+        --param-adjust-positive: #4caf50;
+        --param-adjust-negative: #f44336;
+        --msg-info-color: #777;
 
         /* Typography */
         --font-family: serif;
@@ -129,6 +132,26 @@
         text-align: left;
         padding: var(--spacing-xs);
         border-top: 1px solid var(--wash-color-light);
+      }
+
+      /* Parameter adjustment styles */
+      .llm-parameters .positive {
+        color: var(--param-adjust-positive);
+        font-weight: bold;
+      }
+
+      .llm-parameters .negative {
+        color: var(--param-adjust-negative);
+        font-weight: bold;
+      }
+
+      .llm-parameters .msg-info {
+        color: var(--msg-info-color);
+        font-style: italic;
+      }
+
+      .llm-parameters strong {
+        font-weight: bold;
       }
 
       /* Form Elements */
@@ -303,6 +326,10 @@
         .llm-parameters {
           color: var(--param-color-dark);
           border-top-color: var(--wash-color-dark);
+        }
+
+        .llm-parameters .msg-info {
+          color: #999;
         }
 
         pre {

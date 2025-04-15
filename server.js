@@ -26,6 +26,7 @@ app.post("/api/claude/chat", async (req, res) => {
     temperature = 1.0,
     top_p = 0.9,
     top_k = 50,
+    adjustments = {},
   } = req.body;
 
   const apiKey = process.env.CLAUDE_API_KEY;
@@ -41,14 +42,20 @@ app.post("/api/claude/chat", async (req, res) => {
   }
 
   try {
+    // Ensure parameters are within valid ranges for the Anthropic API
+    const safeTemp = Math.min(1.0, Math.max(0.0, temperature));
+    const safeTopP = Math.min(1.0, Math.max(0.0, top_p));
+    const safeTopK = Math.max(0, top_k); // Top-k should be positive
+    const safeMaxTokens = Math.max(1, max_tokens);
+
     const requestBody = {
       model: model,
       messages: messages,
-      max_tokens: max_tokens,
+      max_tokens: safeMaxTokens,
       system: system,
-      temperature: temperature,
-      top_p: top_p,
-      top_k: top_k,
+      temperature: safeTemp,
+      top_p: safeTopP,
+      top_k: safeTopK,
     };
 
     const anthropicResponse = await fetch(
@@ -75,16 +82,17 @@ app.post("/api/claude/chat", async (req, res) => {
 
     const data = await anthropicResponse.json();
 
-    // Include the model parameters in the response
+    // Include the model parameters and adjustments in the response
     res.json({
       ...data,
       parameters: {
         model: model,
-        temperature: temperature,
-        max_tokens: max_tokens,
-        top_p: top_p,
-        top_k: top_k,
+        temperature: safeTemp,
+        max_tokens: safeMaxTokens,
+        top_p: safeTopP,
+        top_k: safeTopK,
       },
+      adjustments: adjustments,
     });
   } catch (error) {
     console.error("Error proxying to Claude API:", error);
